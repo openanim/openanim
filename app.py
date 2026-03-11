@@ -29,6 +29,7 @@ _rag_available = False
 try:
     from rag.retriever import retrieve_context
     from rag.indexer import is_indexed, get_chroma_client
+
     _rag_available = True
 except ImportError:
     pass
@@ -36,6 +37,7 @@ except ImportError:
 # ── Pipeline logger ───────────────────────────────────────────────────────────
 try:
     from pipeline.logger import PipelineLogger
+
     _logging_available = True
 except ImportError:
     _logging_available = False
@@ -43,7 +45,6 @@ except ImportError:
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 MODEL = "arcee-ai/trinity-large-preview:free"
-MAX_HEAL_ATTEMPTS = 3
 
 BASE_SYSTEM_PROMPT = """You are an expert Manim developer. Write a complete, runnable Manim script for the requested animation.
 The script must define a Scene class named 'GenScene'. Use ONLY standard Manim Community Edition (v0.19+) classes and methods.
@@ -70,13 +71,13 @@ Output ONLY the corrected Python code, no markdown blocks or explanations. Do no
 
 def print_banner(rag_active: bool = False):
     rag_status = (
-        Text("   RAG: ", style="dim white") +
-        Text("● ACTIVE", style="bold bright_green") +
-        Text(" (version-aware Manim context)\n", style="dim white")
-        if rag_active else
-        Text("   RAG: ", style="dim white") +
-        Text("○ INACTIVE", style="bold bright_red") +
-        Text(" (run build_index.py to enable)\n", style="dim white")
+        Text("   RAG: ", style="dim white")
+        + Text("● ACTIVE", style="bold bright_green")
+        + Text(" (version-aware Manim context)\n", style="dim white")
+        if rag_active
+        else Text("   RAG: ", style="dim white")
+        + Text("○ INACTIVE", style="bold bright_red")
+        + Text(" (run build_index.py to enable)\n", style="dim white")
     )
 
     console.print()
@@ -87,8 +88,14 @@ def print_banner(rag_active: bool = False):
                 Text("Auto", style="bold bright_magenta"),
                 Text("Manim", style="bold bright_cyan"),
                 Text("  AI-powered Manim animation generator\n", style="dim white"),
-                Text("   v0.2.0  •  OpenRouter  •  arcee-ai/trinity\n", style="dim bright_black"),
-                Text(f"   Self-healing: up to {MAX_HEAL_ATTEMPTS} auto-fix attempts\n", style="dim bright_yellow"),
+                Text(
+                    "   v0.2.0  •  OpenRouter  •  arcee-ai/trinity\n",
+                    style="dim bright_black",
+                ),
+                Text(
+                    "   Self-healing: continuous auto-fix loop until success\n",
+                    style="dim bright_yellow",
+                ),
                 rag_status,
             ),
             box=box.ROUNDED,
@@ -149,9 +156,15 @@ def print_rag_status(raw_results: list[dict]):
             Text.assemble(
                 Text(" 🔍 ", style="bold bright_cyan"),
                 Text("RAG Retrieved", style="bold bright_cyan"),
-                Text(f"  {len(raw_results)} chunks  [ {' | '.join(parts)} ]\n", style="bold white"),
+                Text(
+                    f"  {len(raw_results)} chunks  [ {' | '.join(parts)} ]\n",
+                    style="bold white",
+                ),
                 Text(f"   avg similarity: {avg_sim:.3f}  ", style="dim white"),
-                Text(f"max: {max(sims):.3f}  min: {min(sims):.3f}", style="dim bright_black"),
+                Text(
+                    f"max: {max(sims):.3f}  min: {min(sims):.3f}",
+                    style="dim bright_black",
+                ),
             ),
             border_style="bright_cyan",
             box=box.ROUNDED,
@@ -160,14 +173,14 @@ def print_rag_status(raw_results: list[dict]):
     )
 
 
-def print_heal_attempt(attempt: int, max_attempts: int):
+def print_heal_attempt(attempt: int):
     console.print()
     console.print(
         Panel(
             Text.assemble(
                 Text(" 🔧 ", style="bold bright_yellow"),
                 Text("Self-Healing", style="bold bright_yellow"),
-                Text(f"  attempt {attempt}/{max_attempts}\n", style="bold white"),
+                Text(f"  attempt {attempt}\n", style="bold white"),
                 Text("   Analyzing error and regenerating code…", style="dim white"),
             ),
             border_style="bright_yellow",
@@ -185,26 +198,12 @@ def print_heal_success(attempt: int):
                 Text(" ✦ ", style="bold bright_green"),
                 Text("Self-Healed!", style="bold bright_green"),
                 Text(f"  fixed on attempt {attempt}\n", style="bold white"),
-                Text("   The code was automatically repaired and rendered successfully.", style="dim white"),
+                Text(
+                    "   The code was automatically repaired and rendered successfully.",
+                    style="dim white",
+                ),
             ),
             border_style="bright_green",
-            box=box.ROUNDED,
-            padding=(0, 1),
-        )
-    )
-
-
-def print_heal_failure():
-    console.print()
-    console.print(
-        Panel(
-            Text.assemble(
-                Text(" ✗ ", style="bold bright_red"),
-                Text("Self-Healing Failed", style="bold bright_red"),
-                Text(f"  exhausted all {MAX_HEAL_ATTEMPTS} attempts\n", style="bold white"),
-                Text("   Try simplifying your prompt or adjusting the description.", style="dim white"),
-            ),
-            border_style="bright_red",
             box=box.ROUNDED,
             padding=(0, 1),
         )
@@ -221,7 +220,9 @@ def print_error_summary(error_output: str):
         if len(error_lines) >= 15:
             break
     summary = "\n".join(error_lines[-20:])
-    syntax = Syntax(summary, "pytb", theme="monokai", word_wrap=True, line_numbers=False)
+    syntax = Syntax(
+        summary, "pytb", theme="monokai", word_wrap=True, line_numbers=False
+    )
     console.print(
         Panel(
             syntax,
@@ -241,7 +242,9 @@ def print_code_preview(code: str, filename: str):
     preview = "\n".join(preview_lines)
     if truncated:
         preview += f"\n  … ({len(lines) - 20} more lines)"
-    syntax = Syntax(preview, "python", theme="monokai", line_numbers=True, word_wrap=False)
+    syntax = Syntax(
+        preview, "python", theme="monokai", line_numbers=True, word_wrap=False
+    )
     console.print(
         Panel(
             syntax,
@@ -259,7 +262,9 @@ def print_pipeline_summary(logger: "PipelineLogger | None"):
     if logger is None:
         return
     s = logger.summary_dict()
-    outcome_style = "bold bright_green" if s["outcome"] == "success" else "bold bright_red"
+    outcome_style = (
+        "bold bright_green" if s["outcome"] == "success" else "bold bright_red"
+    )
     outcome_icon = "✦" if s["outcome"] == "success" else "✗"
     console.print()
     console.print(
@@ -271,7 +276,10 @@ def print_pipeline_summary(logger: "PipelineLogger | None"):
                 Text(f"   Total attempts : {s['attempts']}\n", style="dim white"),
                 Text(f"   RAG chunks used: {s['rag_chunks']}\n", style="dim white"),
                 Text(f"   Total time     : {s['duration_s']}s\n", style="dim white"),
-                Text(f"   Log saved      : logs/pipeline_log.jsonl", style="dim bright_black"),
+                Text(
+                    f"   Log saved      : logs/pipeline_log.jsonl",
+                    style="dim bright_black",
+                ),
             ),
             border_style="bright_magenta",
             box=box.ROUNDED,
@@ -283,7 +291,9 @@ def print_pipeline_summary(logger: "PipelineLogger | None"):
 # ── Core Logic ────────────────────────────────────────────────────────────────
 
 
-def _llm_call(messages: list[dict], spinner_label: str = "Thinking") -> tuple[str, float]:
+def _llm_call(
+    messages: list[dict], spinner_label: str = "Thinking"
+) -> tuple[str, float]:
     """Call the LLM with animated spinner. Returns (content, latency_s)."""
     start = time.time()
     result = {"code": None, "error": None}
@@ -310,7 +320,9 @@ def _llm_call(messages: list[dict], spinner_label: str = "Thinking") -> tuple[st
                 Text.assemble(
                     Text(f" {frame} ", style="bold bright_magenta"),
                     Text(spinner_label, style="bold white"),
-                    Text(f"  generating Manim code… ({elapsed:.1f}s)", style="dim white"),
+                    Text(
+                        f"  generating Manim code… ({elapsed:.1f}s)", style="dim white"
+                    ),
                 )
             )
             time.sleep(0.1)
@@ -350,7 +362,9 @@ def generate_code(prompt: str, rag_context: str = "") -> tuple[str, float]:
     return code, latency
 
 
-def fix_code(original_code: str, error_output: str, original_prompt: str, rag_context: str = "") -> tuple[str, float]:
+def fix_code(
+    original_code: str, error_output: str, original_prompt: str, rag_context: str = ""
+) -> tuple[str, float]:
     """Send the broken code and error back to the LLM for a fix."""
     console.print()
     fix_prompt = f"""The following Manim script was generated for this request:
@@ -372,7 +386,10 @@ Please fix the code so it runs without errors. Output ONLY the corrected Python 
 
     system = FIX_SYSTEM_PROMPT
     if rag_context:
-        system += "\n\nUse this Manim API reference to correct class/method names:\n\n" + rag_context
+        system += (
+            "\n\nUse this Manim API reference to correct class/method names:\n\n"
+            + rag_context
+        )
 
     messages = [
         {"role": "system", "content": system},
@@ -428,9 +445,9 @@ def clean_code(code: str) -> str:
     """Strip markdown fences and whitespace from LLM output."""
     code = code.strip()
     if code.startswith("```python"):
-        code = code[len("```python"):]
+        code = code[len("```python") :]
     elif code.startswith("```"):
-        code = code[len("```"):]
+        code = code[len("```") :]
     if code.endswith("```"):
         code = code[:-3]
     return code.strip()
@@ -462,117 +479,117 @@ def self_healing_loop(
 ) -> bool:
     """
     Attempt to render the scene. If it fails, send the error + RAG context
-    back to the LLM. Repeat up to MAX_HEAL_ATTEMPTS times.
+    back to the LLM. Repeat indefinitely until it works.
 
-    Returns True if the scene was eventually rendered successfully.
+    Returns True when the scene is eventually rendered successfully.
     """
-    current_code = code
+    current_code, attempt = code, 0
 
-    for attempt in range(MAX_HEAL_ATTEMPTS + 1):  # 0 = initial, 1..N = fix attempts
+    while True:
         is_heal = attempt > 0
-
-        # ── Pre-flight validation ─────────────────────────────────────────
         syntax_ok, syntax_err = validate_code_syntax(current_code)
+        scene_ok, scene_err = validate_scene_class(current_code)
+
+        error_output, returncode, latency = "", -1, 0.0
+
         if not syntax_ok:
-            msg = f"{'Fixed' if is_heal else 'Generated'} code has a syntax error: {syntax_err}"
-            print_error(msg)
             error_output = syntax_err
-            if logger:
-                logger.log_generation(
-                    attempt=attempt, code=current_code,
-                    syntax_ok=False, scene_class_ok=False,
-                    render_success=False, error_output=error_output,
-                    is_heal_attempt=is_heal,
-                )
+            print_error(
+                f"{'Fixed' if is_heal else 'Generated'} code has a syntax error: {syntax_err}"
+            )
+        elif not scene_ok:
+            error_output = scene_err
+            print_error(scene_err)
         else:
-            scene_ok, scene_err = validate_scene_class(current_code)
-            if not scene_ok:
-                print_error(scene_err)
-                error_output = scene_err
-                if logger:
-                    logger.log_generation(
-                        attempt=attempt, code=current_code,
-                        syntax_ok=True, scene_class_ok=False,
-                        render_success=False, error_output=error_output,
-                        is_heal_attempt=is_heal,
-                    )
-            else:
-                # ── Save and render ───────────────────────────────────────
-                output_file.write_text(current_code, encoding="utf-8")
-                verb = "Updated" if is_heal else "Saved to"
-                print_step("◆", verb, str(output_file.absolute()), style="bright_cyan")
+            output_file.write_text(current_code, encoding="utf-8")
+            print_step(
+                "◆",
+                "Updated" if is_heal else "Saved to",
+                str(output_file.absolute()),
+                style="bright_cyan",
+            )
+            console.print()
+            print_code_preview(current_code, output_file.name)
+            console.print()
 
-                console.print()
-                print_code_preview(current_code, output_file.name)
-                console.print()
+            t_render_start = time.time()
+            returncode, error_output = render_scene(output_file)
+            latency = time.time() - t_render_start
 
-                t_render_start = time.time()
-                returncode, error_output = render_scene(output_file)
-                render_latency = time.time() - t_render_start
+        render_success = returncode == 0
 
-                if logger:
-                    logger.log_generation(
-                        attempt=attempt, code=current_code,
-                        syntax_ok=True, scene_class_ok=True,
-                        render_success=(returncode == 0),
-                        error_output=error_output,
-                        latency_s=render_latency,
-                        is_heal_attempt=is_heal,
-                    )
+        if logger:
+            kwargs = {
+                "attempt": attempt,
+                "code": current_code,
+                "syntax_ok": syntax_ok,
+                "scene_class_ok": scene_ok,
+                "render_success": render_success,
+                "error_output": error_output,
+                "is_heal_attempt": is_heal,
+            }
+            if latency > 0:
+                kwargs["latency_s"] = latency
+            logger.log_generation(**kwargs)
 
-                if returncode == 0:
-                    if attempt > 0:
-                        print_heal_success(attempt)
-                    return True
-
-        # ── Render failed — attempt healing ───────────────────────────────
-        if attempt >= MAX_HEAL_ATTEMPTS:
-            break
+        if render_success:
+            if is_heal:
+                print_heal_success(attempt)
+            return True
 
         if error_output:
             print_error_summary(error_output)
 
-        heal_attempt = attempt + 1
-        print_heal_attempt(heal_attempt, MAX_HEAL_ATTEMPTS)
+            # Query RAG with the specific error to get more relevant fix documentation
+            error_lines = error_output.strip().splitlines()
+            last_few_errors = "\n".join(error_lines[-5:])  # Get the actual exception
+            error_query = f"Fix Manim error: {last_few_errors}"
+            error_rag_context = get_rag_context(
+                error_query, logger, step_label="Querying error context…"
+            )
+
+            if error_rag_context:
+                rag_context = error_rag_context  # Replace general context with specific error context
+
+        attempt += 1
+        print_heal_attempt(attempt)
 
         try:
-            t_fix_start = time.time()
-            fixed_code, fix_latency = fix_code(current_code, error_output, prompt, rag_context)
+            current_code, _ = fix_code(current_code, error_output, prompt, rag_context)
+            current_code = clean_code(current_code)
+            if not current_code:
+                print_error("The model returned empty fix output.")
+                return False
         except Exception as e:
             print_error(f"Failed to call LLM for fix: {e}")
-            break
-
-        fixed_code = clean_code(fixed_code)
-        if not fixed_code:
-            print_error("The model returned empty fix output.")
-            break
-
-        current_code = fixed_code
-
-    print_heal_failure()
-    return False
+            return False
 
 
 # ── RAG Orchestration ─────────────────────────────────────────────────────────
 
 
-def get_rag_context(prompt: str, logger: "PipelineLogger | None") -> str:
+def get_rag_context(
+    query: str,
+    logger: "PipelineLogger | None",
+    step_label: str = "Retrieving Manim context",
+) -> str:
     """Retrieve RAG context if index is available. Returns empty string otherwise."""
     if not _rag_available:
         return ""
     try:
         chroma_client = get_chroma_client()
         if not is_indexed(chroma_client):
-            console.print(
-                " [dim yellow]⚠ RAG index not found. "
-                "Run[/dim yellow] [bold]uv run python build_index.py[/bold] "
-                "[dim yellow]to enable version-aware generation.[/dim yellow]"
-            )
-            console.print()
+            if step_label == "Retrieving Manim context":  # Only warn on the first query
+                console.print(
+                    " [dim yellow]⚠ RAG index not found. "
+                    "Run[/dim yellow] [bold]uv run python build_index.py[/bold] "
+                    "[dim yellow]to enable version-aware generation.[/dim yellow]"
+                )
+                console.print()
             return ""
 
-        print_step("🔍", "Retrieving Manim context", "querying ChromaDB…", style="bright_cyan")
-        rag_context, raw_results = retrieve_context(prompt, client=chroma_client)
+        print_step("🔍", "RAG Query", step_label, style="bright_cyan")
+        rag_context, raw_results = retrieve_context(query, client=chroma_client)
 
         print_rag_status(raw_results)
 
