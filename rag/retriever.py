@@ -23,10 +23,10 @@ from .indexer import get_chroma_client, get_or_create_collection, COLLECTION_NAM
 console = Console()
 
 # Number of chunks to retrieve
-TOP_K = 8
+TOP_K = 16
 
 # How many characters of each chunk to include in context (cap long chunks)
-MAX_CHUNK_CHARS = 600
+MAX_CHUNK_CHARS = 1200
 
 # Source type priority (lower = higher priority in display order)
 SOURCE_PRIORITY = {

@@ -13,6 +13,7 @@ import time
 from typing import Union
 import requests
 from dotenv import load_dotenv
+import concurrent.futures
 
 load_dotenv()
 
@@ -20,8 +21,8 @@ load_dotenv()
 # Confirmed working: text-embedding-3-small (also: openai/text-embedding-3-small)
 EMBED_MODEL = "text-embedding-3-small"
 
-# Max texts per API call (be conservative)
-BATCH_SIZE = 64
+# Max texts per API call (OpenRouter can handle more than 64)
+BATCH_SIZE = 250
 
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
 
@@ -59,11 +60,11 @@ def embed_texts(
     api_key: str | None = None,
     retry_delay: float = 2.0,
     max_retries: int = 3,
+    max_workers: int = 5,
 ) -> list[list[float]]:
     """
-    Embed a list of texts using OpenRouter.
-
-    Handles batching automatically.  Returns a list of embedding vectors
+    Embed a list of texts using OpenRouter concurrently.
+    Handles batching automatically. Returns a list of embedding vectors
     in the same order as the input texts.
     """
     if not api_key:
@@ -71,15 +72,13 @@ def embed_texts(
     if not api_key:
         raise ValueError("OPENROUTER_API_KEY is not set.")
 
-    all_embeddings: list[list[float]] = []
+    all_embeddings: list[list[float]] = [[] for _ in range(len(texts))]
 
-    for i in range(0, len(texts), BATCH_SIZE):
-        batch = texts[i : i + BATCH_SIZE]
+    def _process_batch(i: int, batch: list[str]) -> tuple[int, list[list[float]]]:
         for attempt in range(max_retries):
             try:
                 batch_embeddings = _embed_batch(batch, api_key, model)
-                all_embeddings.extend(batch_embeddings)
-                break
+                return i, batch_embeddings
             except requests.HTTPError as e:
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay * (attempt + 1))
@@ -88,6 +87,17 @@ def embed_texts(
                         f"Embedding batch {i // BATCH_SIZE} failed after "
                         f"{max_retries} attempts: {e}"
                     ) from e
+
+    batches = []
+    for i in range(0, len(texts), BATCH_SIZE):
+        batch = texts[i : i + BATCH_SIZE]
+        batches.append((i, batch))
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_batch = {executor.submit(_process_batch, i, batch): (i, batch) for i, batch in batches}
+        for future in concurrent.futures.as_completed(future_to_batch):
+            i, batch_embeddings = future.result()
+            all_embeddings[i:i+len(batch_embeddings)] = batch_embeddings
 
     return all_embeddings
 

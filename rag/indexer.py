@@ -50,10 +50,10 @@ CHROMA_DB_PATH = Path(__file__).parent.parent / "chroma_db"
 COLLECTION_NAME = "manim_knowledge"
 MANIM_REPO_PATH = Path(__file__).parent.parent / "manim"
 
-# Chunking parameters
-CHUNK_SIZE = 800          # characters per chunk
-CHUNK_OVERLAP = 150       # overlap between consecutive chunks
-MIN_CHUNK_SIZE = 100      # ignore chunks smaller than this
+# Chunking parameters (optimized for extreme indexing depth and detail)
+CHUNK_SIZE = 450         # characters per chunk (much smaller chunks isolate specific API traits better)
+CHUNK_OVERLAP = 225      # massive overlap means fewer lost contextual boundaries between chunks
+MIN_CHUNK_SIZE = 50      # keep small chunks even if they are only a line or two
 
 
 def _make_id(file_path: str, chunk_index: int) -> str:
@@ -103,8 +103,8 @@ def _extract_py_docstring_chunks(source: str, file_path: str) -> list[dict]:
         lines = source.splitlines()
         start = node.lineno - 1
         end = getattr(node, "end_lineno", start + 30)
-        # Cap method bodies at 60 lines so chunks stay manageable
-        end = min(end, start + 60)
+        # Cap method bodies at 150 lines to keep heavy, complex python methods entire.
+        end = min(end, start + 150)
         return "\n".join(lines[start:end])
 
     # Module docstring
@@ -303,7 +303,7 @@ def build_index(force: bool = False) -> None:
         for d in docs
     ]
 
-    # Embed in batches with progress display
+    # Embed in batches with progress display (lowered since we have MANY more chunks)
     EMBED_BATCH = 64
     CHROMA_BATCH = 500
 
