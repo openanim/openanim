@@ -1,12 +1,19 @@
 [project]
 name = "automanim"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "RAG-augmented AI Manim animation generator with self-healing code execution"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "chromadb>=1.5.5",
+    "gitpython>=3.1.46",
     "manim>=0.19.0",
+    "matplotlib>=3.9.0",
+    "numpy>=2.0.0",
     "openai>=1.0.0",
+    "pandas>=2.2.0",
     "python-dotenv>=1.0.0",
+    "requests>=2.32.5",
     "rich>=14.3.3",
+    "sentence-transformers>=5.2.3",
 ]

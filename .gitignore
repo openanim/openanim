@@ -51,3 +51,8 @@ static/manim_code.py
 .DS_Store
 Thumbs.db
 generated_scene.py
+
+# AutoManim RAG & pipeline
+chroma_db/
+logs/
+manim/
