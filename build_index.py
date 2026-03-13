@@ -50,18 +50,7 @@ def main():
 
     client = get_chroma_client()
 
-    if is_indexed(client) and not force:
-        from rag.indexer import COLLECTION_NAME
-        count = client.get_collection(COLLECTION_NAME).count()
-        console.print(
-            f" [bold bright_green]✓[/bold bright_green] Index already exists "
-            f"[dim]({count:,} chunks in ChromaDB)[/dim]"
-        )
-        console.print(
-            " [dim]Nothing to do. Run with [bold]--force[/bold] to rebuild.[/dim]"
-        )
-        console.print()
-        return
+
 
     start = time.time()
     console.print(" [bold bright_cyan]▶[/bold bright_cyan] Starting indexing pipeline…\n")

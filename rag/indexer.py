@@ -32,6 +32,7 @@ import os
 import re
 import ast
 import hashlib
+import subprocess
 from pathlib import Path
 from typing import Generator
 
@@ -49,11 +50,74 @@ console = Console()
 CHROMA_DB_PATH = Path(__file__).parent.parent / "chroma_db"
 COLLECTION_NAME = "manim_knowledge"
 MANIM_REPO_PATH = Path(__file__).parent.parent / "manim"
+STATE_FILE = CHROMA_DB_PATH / ".rag_commit"
 
 # Chunking parameters (optimized for extreme indexing depth and detail)
 CHUNK_SIZE = 450         # characters per chunk (much smaller chunks isolate specific API traits better)
 CHUNK_OVERLAP = 225      # massive overlap means fewer lost contextual boundaries between chunks
 MIN_CHUNK_SIZE = 50      # keep small chunks even if they are only a line or two
+
+
+def _get_current_commit() -> str | None:
+    """Get the current git commit hash of the manim repository."""
+    if not MANIM_REPO_PATH.exists():
+        return None
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=MANIM_REPO_PATH,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
+def _get_last_commit() -> str | None:
+    """Read the last indexed commit hash from the state file."""
+    if STATE_FILE.exists():
+        return STATE_FILE.read_text(encoding="utf-8").strip()
+    return None
+
+
+def _get_save_commit(commit: str) -> None:
+    """Save the commit hash to the state file."""
+    CHROMA_DB_PATH.mkdir(parents=True, exist_ok=True)
+    STATE_FILE.write_text(commit, encoding="utf-8")
+
+
+def _get_changed_files(old_commit: str, new_commit: str) -> tuple[set[str], set[str]]:
+    """Return a tuple of (modified_files, deleted_files) relative to the manim repo."""
+    try:
+        # Check files that were changed (added/modified/renamed)
+        result_diff = subprocess.run(
+            ["git", "diff", "--name-status", old_commit, new_commit],
+            cwd=MANIM_REPO_PATH,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        modified = set()
+        deleted = set()
+        
+        for line in result_diff.stdout.strip().split("\n"):
+            if not line:
+                continue
+            parts = line.split("\t")
+            status, path = parts[0], parts[-1]
+            
+            if status.startswith("D"):
+                deleted.add(path)
+            else:
+                modified.add(path)
+                
+        return modified, deleted
+    except subprocess.CalledProcessError:
+        # If the commit history is divergent or the old commit doesn't exist, fallback to rebuilding all
+        return set(), set()
 
 
 def _make_id(file_path: str, chunk_index: int) -> str:
@@ -128,10 +192,11 @@ def _extract_py_docstring_chunks(source: str, file_path: str) -> list[dict]:
     return chunks
 
 
-def _iter_corpus() -> Generator[dict, None, None]:
+def _iter_corpus(allowed_paths: set[str] | None = None) -> Generator[dict, None, None]:
     """
     Walk the Manim repo and yield document dicts with keys:
         text, source_type, file_path, version
+    If allowed_paths is provided, ONLY yield documents for those specific relative paths.
     """
     if not MANIM_REPO_PATH.exists():
         raise FileNotFoundError(
@@ -151,6 +216,11 @@ def _iter_corpus() -> Generator[dict, None, None]:
             continue
 
         rel_path = str(py_file.relative_to(MANIM_REPO_PATH))
+        # Ensure path uses forward slashes to match git diff output
+        rel_path_git = rel_path.replace("\\", "/")
+        
+        if allowed_paths is not None and rel_path_git not in allowed_paths:
+            continue
 
         # Try AST-based extraction first
         ast_chunks = _extract_py_docstring_chunks(source, rel_path)
@@ -187,6 +257,10 @@ def _iter_corpus() -> Generator[dict, None, None]:
             except OSError:
                 continue
             rel_path = str(doc_file.relative_to(MANIM_REPO_PATH))
+            rel_path_git = rel_path.replace("\\", "/")
+            if allowed_paths is not None and rel_path_git not in allowed_paths:
+                continue
+                
             for chunk in _chunk_text(text):
                 yield {
                     "text": chunk,
@@ -209,6 +283,10 @@ def _iter_corpus() -> Generator[dict, None, None]:
         except OSError:
             continue
         rel_path = str(cl_file.relative_to(MANIM_REPO_PATH))
+        rel_path_git = rel_path.replace("\\", "/")
+        if allowed_paths is not None and rel_path_git not in allowed_paths:
+            continue
+            
         for chunk in _chunk_text(text):
             yield {
                 "text": chunk,
@@ -226,6 +304,10 @@ def _iter_corpus() -> Generator[dict, None, None]:
         except OSError:
             continue
         rel_path = str(ex_file.relative_to(MANIM_REPO_PATH))
+        rel_path_git = rel_path.replace("\\", "/")
+        if allowed_paths is not None and rel_path_git not in allowed_paths:
+            continue
+            
         for chunk in _chunk_text(source):
             yield {
                 "text": chunk,
@@ -269,26 +351,75 @@ def build_index(force: bool = False) -> None:
         force: If True, drop and rebuild the collection even if it exists.
     """
     client = get_chroma_client()
+    current_commit = _get_current_commit()
+    last_commit = _get_last_commit()
 
     if is_indexed(client) and not force:
-        count = client.get_collection(COLLECTION_NAME).count()
-        console.print(
-            f"  [dim]RAG index already exists ({count:,} chunks). "
-            "Use force=True to rebuild.[/dim]"
-        )
-        return
+        if current_commit and last_commit and current_commit == last_commit:
+            count = client.get_collection(COLLECTION_NAME).count()
+            console.print(
+                f"  [dim]RAG index is already up to date ({count:,} chunks at commit {current_commit[:7]}).[/dim]"
+            )
+            return
 
-    if force:
+    modified_files = None
+    deleted_files = None
+    is_incremental = False
+    
+    if is_indexed(client) and not force and last_commit and current_commit:
+        modified_files, deleted_files = _get_changed_files(last_commit, current_commit)
+        # If we successfully parsed a diff, we can do an incremental update.
+        if modified_files or deleted_files:
+            is_incremental = True
+            console.print(f"  [bold bright_cyan]Incremental update:[/bold bright_cyan] {len(modified_files)} modified, {len(deleted_files)} deleted files.")
+        elif not modified_files and not deleted_files:
+            # We got an empty diff but commits are different - probably an empty commit or metadata change.
+            _get_save_commit(current_commit)
+            console.print("  [dim]No relevant files changed in the update.[/dim]")
+            return
+
+    if force or (is_indexed(client) and not is_incremental):
+        if not is_incremental and not force:
+            console.print("  [dim]Full rebuild required (no prior commit state or divergent history).[/dim]")
         try:
             client.delete_collection(COLLECTION_NAME)
         except Exception:
             pass
 
     collection = get_or_create_collection(client)
+    
+    # --- Incremental Delete Phase ---
+    if is_incremental and (modified_files or deleted_files):
+        files_to_delete = modified_files.union(deleted_files)
+        console.print(f"  [dim]Removing old chunks for {len(files_to_delete)} changed/deleted files…[/dim]")
+        
+        # We delete by file_path metadata. Note: Windows paths in metadata might have backslashes,
+        # so we search for the base filename, or delete chunks where the metadata path matches our git diff path.
+        # ChromaDB allows delete by metadata where field matches exactly.
+        for file_path in files_to_delete:
+            # Convert forward slashes to OS specific path separators for metadata matching
+            os_specific_path = file_path.replace("/", os.sep)
+            
+            try:
+                # Delete using the OS specific path we saved during indexing
+                collection.delete(where={"file_path": os_specific_path})
+            except Exception as e:
+                pass
 
-    # Collect all docs first so we know the total
-    console.print("  [dim]Scanning Manim corpus…[/dim]")
-    docs = list(_iter_corpus())
+
+    # --- Indexing Phase ---
+    if is_incremental:
+        console.print(f"  [dim]Scanning {len(modified_files)} modified files…[/dim]")
+        docs = list(_iter_corpus(allowed_paths=modified_files))
+        if not docs:
+            console.print("  [dim]No new chunks to embed after applying the diff filters.[/dim]")
+            if current_commit:
+                _get_save_commit(current_commit)
+            return
+    else:
+        console.print("  [dim]Scanning entire Manim corpus…[/dim]")
+        docs = list(_iter_corpus())
+        
     console.print(f"  [dim]Found {len(docs):,} chunks to embed.[/dim]")
 
     texts = [d["text"] for d in docs]
@@ -343,6 +474,10 @@ def build_index(force: bool = False) -> None:
             progress.update(task, advance=min(CHROMA_BATCH, len(docs) - i))
 
     console.print(
-        f"  [bold bright_green]✓[/bold bright_green] Indexed {len(docs):,} chunks "
+        f"  [bold bright_green]✓[/bold bright_green] {'Updated' if is_incremental else 'Created'} index with {len(docs):,} new chunks "
         f"into ChromaDB at [dim]{CHROMA_DB_PATH}[/dim]"
     )
+
+    if current_commit:
+        _get_save_commit(current_commit)
+        console.print(f"  [dim]Saved state at commit {current_commit[:7]}[/dim]")
