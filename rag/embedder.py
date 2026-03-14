@@ -1,38 +1,15 @@
-"""
-embedder.py
------------
-OpenRouter Embeddings client for AutoManim RAG.
-
-Uses nomic-ai/nomic-embed-text via OpenRouter's OpenAI-compatible
-embeddings endpoint.  Batches inputs to stay under the API's per-request
-limit and returns plain Python lists so ChromaDB can store them directly.
-"""
-
-import os
-import time
-from typing import Union
-import requests
+import os, time, requests, concurrent.futures
 from dotenv import load_dotenv
-import concurrent.futures
 
 load_dotenv()
 
-# Default model — OpenAI text-embedding-3-small via OpenRouter, 1536-dim
-# Confirmed working: text-embedding-3-small (also: openai/text-embedding-3-small)
 EMBED_MODEL = "text-embedding-3-small"
-
-# Max texts per API call (OpenRouter can handle more than 64)
 BATCH_SIZE = 250
-
 OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
 
 
-def _embed_batch(texts: list[str], api_key: str, model: str) -> list[list[float]]:
-    """
-    Call OpenRouter /embeddings for a single batch of texts.
-    Returns a list of embedding vectors (list-of-floats).
-    """
-    response = requests.post(
+def _embed_batch(texts, api_key, model=EMBED_MODEL):
+    resp = requests.post(
         f"{OPENROUTER_API_BASE}/embeddings",
         headers={
             "Authorization": f"Bearer {api_key}",
@@ -40,68 +17,49 @@ def _embed_batch(texts: list[str], api_key: str, model: str) -> list[list[float]
             "HTTP-Referer": "https://github.com/AutoManim",
             "X-Title": "AutoManim",
         },
-        json={
-            "model": model,
-            "input": texts,
-            "encoding_format": "float",
-        },
+        json={"model": model, "input": texts, "encoding_format": "float"},
         timeout=120,
     )
-    response.raise_for_status()
-    data = response.json()
-    # OpenAI-compatible: data["data"] sorted by index
-    sorted_items = sorted(data["data"], key=lambda x: x["index"])
-    return [item["embedding"] for item in sorted_items]
+    resp.raise_for_status()
+    return [
+        x["embedding"] for x in sorted(resp.json()["data"], key=lambda x: x["index"])
+    ]
 
 
 def embed_texts(
-    texts: list[str],
-    model: str = EMBED_MODEL,
-    api_key: str | None = None,
-    retry_delay: float = 2.0,
-    max_retries: int = 3,
-    max_workers: int = 5,
-) -> list[list[float]]:
-    """
-    Embed a list of texts using OpenRouter concurrently.
-    Handles batching automatically. Returns a list of embedding vectors
-    in the same order as the input texts.
-    """
-    if not api_key:
-        api_key = os.getenv("OPENROUTER_API_KEY")
+    texts,
+    model=EMBED_MODEL,
+    api_key=None,
+    retry_delay=2.0,
+    max_retries=3,
+    max_workers=5,
+):
+    api_key = api_key or os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise ValueError("OPENROUTER_API_KEY is not set.")
+    all_embeddings = [[] for _ in range(len(texts))]
+    batches = [(i, texts[i : i + BATCH_SIZE]) for i in range(0, len(texts), BATCH_SIZE)]
 
-    all_embeddings: list[list[float]] = [[] for _ in range(len(texts))]
-
-    def _process_batch(i: int, batch: list[str]) -> tuple[int, list[list[float]]]:
+    def _process(i, batch):
         for attempt in range(max_retries):
             try:
-                batch_embeddings = _embed_batch(batch, api_key, model)
-                return i, batch_embeddings
+                return i, _embed_batch(batch, api_key, model)
             except requests.HTTPError as e:
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay * (attempt + 1))
                 else:
                     raise RuntimeError(
-                        f"Embedding batch {i // BATCH_SIZE} failed after "
-                        f"{max_retries} attempts: {e}"
+                        f"Batch {i//BATCH_SIZE} failed after {max_retries} attempts: {e}"
                     ) from e
 
-    batches = []
-    for i in range(0, len(texts), BATCH_SIZE):
-        batch = texts[i : i + BATCH_SIZE]
-        batches.append((i, batch))
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_batch = {executor.submit(_process_batch, i, batch): (i, batch) for i, batch in batches}
-        for future in concurrent.futures.as_completed(future_to_batch):
-            i, batch_embeddings = future.result()
-            all_embeddings[i:i+len(batch_embeddings)] = batch_embeddings
-
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as ex:
+        for future in concurrent.futures.as_completed(
+            {ex.submit(_process, i, b): (i, b) for i, b in batches}
+        ):
+            i, embs = future.result()
+            all_embeddings[i : i + len(embs)] = embs
     return all_embeddings
 
 
-def embed_query(query: str, model: str = EMBED_MODEL, api_key: str | None = None) -> list[float]:
-    """Convenience wrapper: embed a single query string."""
+def embed_query(query, model=EMBED_MODEL, api_key=None):
     return embed_texts([query], model=model, api_key=api_key)[0]
