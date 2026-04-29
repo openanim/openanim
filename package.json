@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "generate": "uv run python app.py",
+    "index": "uv run python build_index.py",
+    "index:force": "uv run python build_index.py --force",
+    "check-embed": "uv run python _check_embed.py",
+    "manim:sync": "git clone --depth 1 --branch main --single-branch https://github.com/ManimCommunity/manim.git manim || git -C manim pull --ff-only origin main",
+    "rag:update": "bun run manim:sync && bun run index",
+    "rag:rebuild": "bun run manim:sync && bun run index:force"
+  }
+}

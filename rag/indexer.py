@@ -18,7 +18,7 @@ CHROMA_DB_PATH = Path(__file__).parent.parent / "chroma_db"
 COLLECTION_NAME = "manim_knowledge"
 MANIM_REPO_PATH = Path(__file__).parent.parent / "manim"
 STATE_FILE = CHROMA_DB_PATH / ".rag_commit"
-CHUNK_SIZE, CHUNK_OVERLAP, MIN_CHUNK_SIZE = 450, 225, 50
+CHUNK_SIZE, CHUNK_OVERLAP, MIN_CHUNK_SIZE = 1000, 200, 50
 
 
 def get_chroma_client():
