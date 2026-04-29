@@ -1,1 +1,1 @@
-# RAG package for AutoManim
+# RAG package for OpenAnim

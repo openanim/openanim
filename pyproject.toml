@@ -1,5 +1,5 @@
 [project]
-name = "automanim"
+name = "openanim"
 version = "0.2.0"
 description = "RAG-augmented AI Manim animation generator with self-healing code execution"
 readme = "README.md"

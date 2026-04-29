@@ -12,7 +12,7 @@ def main():
     console.print(
         Panel(
             Text.assemble(
-                Text(" ◆ AutoManim RAG Index Builder\n", style="bold white"),
+                Text(" ◆ OpenAnim RAG Index Builder\n", style="bold white"),
                 Text(
                     f"   Mode: {'FORCE REBUILD' if force else 'incremental'}",
                     style="dim bright_yellow",

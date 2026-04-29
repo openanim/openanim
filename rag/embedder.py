@@ -14,8 +14,8 @@ def _embed_batch(texts, api_key, model=EMBED_MODEL):
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/AutoManim",
-            "X-Title": "AutoManim",
+            "HTTP-Referer": "https://github.com/OpenAnim",
+            "X-Title": "OpenAnim",
         },
         json={"model": model, "input": texts, "encoding_format": "float"},
         timeout=120,

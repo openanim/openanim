@@ -1,6 +1,6 @@
-# AutoManim (CLI Edition)
+# OpenAnim (CLI Edition)
 
-AutoManim automates the creation and execution of mathematical animations using Manim and OpenRouter. It generates Python code for Manim based on natural language descriptions and renders it immediately.
+OpenAnim automates the creation and execution of mathematical animations using Manim and OpenRouter. It generates Python code for Manim based on natural language descriptions and renders it immediately.
 
 ## Features
 
@@ -22,8 +22,8 @@ AutoManim automates the creation and execution of mathematical animations using 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/AutoManim.git
-   cd AutoManim
+   git clone https://github.com/yourusername/OpenAnim.git
+   cd OpenAnim
    ```
 
 2. Install dependencies:

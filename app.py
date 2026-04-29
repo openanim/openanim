@@ -62,7 +62,7 @@ def print_banner(rag_active=False):
     _panel(
         Text.assemble(
             Text(" ✦ ", style="bold bright_magenta"),
-            Text("AutoManim", style="bold bright_cyan"),
+            Text("OpenAnim", style="bold bright_cyan"),
             Text("  AI-powered Manim animation generator\n   RAG: ", style="dim white"),
             rag_text,
         )

@@ -1,1 +1,1 @@
-# Pipeline logging package for AutoManim
+# Pipeline logging package for OpenAnim
