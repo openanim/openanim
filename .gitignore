@@ -52,7 +52,7 @@ static/manim_code.py
 Thumbs.db
 generated_scene.py
 
-# OpenAnim RAG & pipeline
+# OpenAnim
 chroma_db/
 logs/
 manim/
