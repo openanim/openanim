@@ -1,7 +1,7 @@
+use crate::LlmProvider;
 use crate::client::LlmClient;
 use crate::prompts;
-use crate::LlmProvider;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use scene_ir::scene::Scene;
 use scene_ir::validation::validate_scene;
 
@@ -35,7 +35,10 @@ impl LlmCompiler {
                 prompts::get_repair_prompt(&bad_json, &last_error)
             };
 
-            let response_text = self.client.query(&self.provider, system_prompt, &prompt_to_send).await?;
+            let response_text = self
+                .client
+                .query(&self.provider, system_prompt, &prompt_to_send)
+                .await?;
             let cleaned_json = clean_json_string(&response_text);
 
             match serde_json::from_str::<Scene>(&cleaned_json) {
@@ -50,7 +53,10 @@ impl LlmCompiler {
                             .collect::<Vec<String>>()
                             .join("\n");
                         bad_json = cleaned_json;
-                        last_error = format!("JSON schema is valid but violated referential integrity/validation constraints:\n{}", error_msg);
+                        last_error = format!(
+                            "JSON schema is valid but violated referential integrity/validation constraints:\n{}",
+                            error_msg
+                        );
                     }
                 }
                 Err(e) => {
@@ -64,12 +70,18 @@ impl LlmCompiler {
 
         Err(anyhow!(
             "Failed to compile scene after {} attempts. Last error: {}\nJSON tried:\n{}",
-            max_attempts, last_error, bad_json
+            max_attempts,
+            last_error,
+            bad_json
         ))
     }
 
     /// Patches an existing Scene IR to apply semantic modifications requested by the user.
-    pub async fn patch_scene(&self, current_scene: &Scene, modification_prompt: &str) -> Result<Scene> {
+    pub async fn patch_scene(
+        &self,
+        current_scene: &Scene,
+        modification_prompt: &str,
+    ) -> Result<Scene> {
         let current_scene_json = serde_json::to_string_pretty(current_scene)?;
         let system_prompt = prompts::get_system_prompt();
         let user_prompt = prompts::get_patch_prompt(&current_scene_json, modification_prompt);
@@ -86,7 +98,10 @@ impl LlmCompiler {
                 prompt_to_send = prompts::get_repair_prompt(&bad_json, &last_error);
             }
 
-            let response_text = self.client.query(&self.provider, system_prompt, &prompt_to_send).await?;
+            let response_text = self
+                .client
+                .query(&self.provider, system_prompt, &prompt_to_send)
+                .await?;
             let cleaned_json = clean_json_string(&response_text);
 
             match serde_json::from_str::<Scene>(&cleaned_json) {
@@ -115,7 +130,9 @@ impl LlmCompiler {
 
         Err(anyhow!(
             "Failed to patch scene after {} attempts. Last error: {}\nJSON tried:\n{}",
-            max_attempts, last_error, bad_json
+            max_attempts,
+            last_error,
+            bad_json
         ))
     }
 }

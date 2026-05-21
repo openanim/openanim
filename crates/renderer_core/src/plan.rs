@@ -60,10 +60,7 @@ pub enum RenderCommand {
         working_dir: Option<String>,
     },
     /// Copy an asset file.
-    CopyAsset {
-        source: String,
-        destination: String,
-    },
+    CopyAsset { source: String, destination: String },
     /// Compose multiple outputs (e.g., concat video segments).
     Compose {
         inputs: Vec<String>,

@@ -4,4 +4,4 @@ pub mod cache;
 pub mod runner;
 
 pub use cache::ArtifactCache;
-pub use runner::Orchestrator;
+pub use runner::{Orchestrator, RenderOptions};

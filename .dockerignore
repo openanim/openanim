@@ -1,0 +1,13 @@
+target/
+.git/
+.github/
+
+# Legacy local web frontend. The Rust `crates/studio` dev console is local-only
+# and should not be included in production engine images unless explicitly needed.
+studio/
+
+Papers/
+*.mp4
+**/*.mp4
+.openanim/
+**/.openanim/

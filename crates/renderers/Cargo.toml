@@ -21,3 +21,11 @@ renderer_core.workspace = true
 
 # External utilities for code compilation / sandbox runner
 tempfile = "3.10"
+
+[features]
+default = ["ffmpeg"]
+ffmpeg = []
+manim = []
+mermaid = []
+remotion = []
+all = ["ffmpeg", "manim", "mermaid", "remotion"]

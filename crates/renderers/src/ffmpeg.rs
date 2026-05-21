@@ -7,9 +7,9 @@
 //! pixel-perfect rendering with zero heavy dependencies, then coordinates
 //! processes natively.
 
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use async_trait::async_trait;
 
 use scene_ir::components::ShapeKind;
 use scene_ir::node::{Node, NodeType};
@@ -18,7 +18,9 @@ use scene_ir::scene::Scene;
 use scene_ir::timeline::{AnimatableProperty, EasingFunction, KeyframeTrack, PropertyValue};
 use scene_ir::types::Color;
 
-use renderer_core::adapter::{CompileError, ExecuteError, HealthError, HealthStatus, RendererAdapter};
+use renderer_core::adapter::{
+    CompileError, ExecuteError, HealthError, HealthStatus, RendererAdapter,
+};
 use renderer_core::artifact::{ArtifactStatus, RenderArtifact};
 use renderer_core::plan::{RenderCommand, RenderPlan};
 
@@ -30,7 +32,11 @@ impl FfmpegAdapter {
     }
 
     /// Compile a Node shape/style/text to SVG string representation.
-    fn compile_to_svg(&self, node: &Node, settings: &RenderSettings) -> Result<String, CompileError> {
+    fn compile_to_svg(
+        &self,
+        node: &Node,
+        settings: &RenderSettings,
+    ) -> Result<String, CompileError> {
         let body;
         let width = settings.resolution.0 as f64;
         let height = settings.resolution.1 as f64;
@@ -56,7 +62,11 @@ impl FfmpegAdapter {
             NodeType::Shape => {
                 if let Some(shape) = &node.components.shape {
                     match &shape.kind {
-                        ShapeKind::Rectangle { width, height, corner_radius } => {
+                        ShapeKind::Rectangle {
+                            width,
+                            height,
+                            corner_radius,
+                        } => {
                             let rx = corner_radius;
                             body = format!(
                                 r#"<rect x="0" y="0" width="{}" height="{}" rx="{}" ry="{}" fill="{}" stroke="{}" stroke-width="{}" />"#,
@@ -82,7 +92,8 @@ impl FfmpegAdapter {
                             );
                         }
                         ShapeKind::Polygon { points, closed } => {
-                            let pts: Vec<String> = points.iter().map(|p| format!("{},{}", p.x, p.y)).collect();
+                            let pts: Vec<String> =
+                                points.iter().map(|p| format!("{},{}", p.x, p.y)).collect();
                             let pts_str = pts.join(" ");
                             if *closed {
                                 body = format!(
@@ -102,34 +113,68 @@ impl FfmpegAdapter {
                                 data, fill_str, stroke_str, stroke_width
                             );
                         }
-                        ShapeKind::Arc { radius, start_angle, end_angle } => {
+                        ShapeKind::Arc {
+                            radius,
+                            start_angle,
+                            end_angle,
+                        } => {
                             let x1 = radius * start_angle.cos();
                             let y1 = radius * start_angle.sin();
                             let x2 = radius * end_angle.cos();
                             let y2 = radius * end_angle.sin();
-                            let large_arc = if (end_angle - start_angle).abs() > std::f64::consts::PI { 1 } else { 0 };
+                            let large_arc =
+                                if (end_angle - start_angle).abs() > std::f64::consts::PI {
+                                    1
+                                } else {
+                                    0
+                                };
                             body = format!(
                                 r#"<path d="M {} {} A {} {} 0 {} 1 {} {}" fill="{}" stroke="{}" stroke-width="{}" />"#,
-                                x1, y1, radius, radius, large_arc, x2, y2, fill_str, stroke_str, stroke_width
+                                x1,
+                                y1,
+                                radius,
+                                radius,
+                                large_arc,
+                                x2,
+                                y2,
+                                fill_str,
+                                stroke_str,
+                                stroke_width
                             );
                         }
-                        ShapeKind::Arrow { start, end, head_size } => {
+                        ShapeKind::Arrow {
+                            start,
+                            end,
+                            head_size,
+                        } => {
                             let dx = end.x - start.x;
                             let dy = end.y - start.y;
                             let angle = dy.atan2(dx);
-                            let arrow_len = (dx*dx + dy*dy).sqrt();
+                            let arrow_len = (dx * dx + dy * dy).sqrt();
                             let head_x1 = arrow_len - head_size;
                             let head_y1 = -head_size * 0.5;
                             let head_y2 = head_size * 0.5;
-                            
+
                             body = format!(
                                 r#"<g transform="rotate({}, {}, {})">
                                      <line x1="{}" y1="{}" x2="{}" y2="{}" stroke="{}" stroke-width="{}" />
                                      <polygon points="{},0 {},{} {},{}" fill="{}" />
                                    </g>"#,
-                                angle.to_degrees(), start.x, start.y,
-                                start.x, start.y, start.x + arrow_len, start.y, stroke_str, stroke_width,
-                                start.x + arrow_len, start.x + head_x1, head_y1, start.x + head_x1, head_y2, stroke_str
+                                angle.to_degrees(),
+                                start.x,
+                                start.y,
+                                start.x,
+                                start.y,
+                                start.x + arrow_len,
+                                start.y,
+                                stroke_str,
+                                stroke_width,
+                                start.x + arrow_len,
+                                start.x + head_x1,
+                                head_y1,
+                                start.x + head_x1,
+                                head_y2,
+                                stroke_str
                             );
                         }
                     }
@@ -148,7 +193,14 @@ impl FfmpegAdapter {
                     };
                     body = format!(
                         r#"<text x="{}" y="{}" font-family="{}" font-size="{}" text-anchor="{}" fill="{}" opacity="{}">{}</text>"#,
-                        width * 0.5, font_size, font_family, font_size, text_anchor, fill_str, opacity, text.content
+                        width * 0.5,
+                        font_size,
+                        font_family,
+                        font_size,
+                        text_anchor,
+                        fill_str,
+                        opacity,
+                        text.content
                     );
                 } else {
                     return Err(CompileError::MissingComponent("TextContent".to_string()));
@@ -191,7 +243,7 @@ impl FfmpegAdapter {
 
         for i in 0..sorted.len() - 1 {
             let k0 = &sorted[i];
-            let k1 = &sorted[i+1];
+            let k1 = &sorted[i + 1];
             let t0 = k0.time.0;
             let t1 = k1.time.0;
             let v0 = match k0.value {
@@ -221,7 +273,10 @@ impl FfmpegAdapter {
             };
 
             let interval_expr = format!("({}+({})*({}))", v0, v1 - v0, t_factor);
-            expr = format!("if(lt(t, {}), {}, if(lt(t, {}), {}, {}))", t0, expr, t1, interval_expr, v1);
+            expr = format!(
+                "if(lt(t, {}), {}, if(lt(t, {}), {}, {}))",
+                t0, expr, t1, interval_expr, v1
+            );
         }
 
         expr
@@ -265,7 +320,7 @@ impl RendererAdapter for FfmpegAdapter {
         settings: &RenderSettings,
     ) -> Result<RenderPlan, CompileError> {
         let mut plan = RenderPlan::new(self.name(), scene.id);
-        
+
         let width = settings.resolution.0;
         let height = settings.resolution.1;
         let duration = scene.duration.0;
@@ -277,7 +332,10 @@ impl RendererAdapter for FfmpegAdapter {
             "-f".to_string(),
             "lavfi".to_string(),
             "-i".to_string(),
-            format!("color=c=black:s={}x{}:d={}:r={}", width, height, duration, fps),
+            format!(
+                "color=c=black:s={}x{}:d={}:r={}",
+                width, height, duration, fps
+            ),
         ];
 
         let mut filter_chains = Vec::new();
@@ -294,7 +352,7 @@ impl RendererAdapter for FfmpegAdapter {
                 NodeType::Shape | NodeType::Text => {
                     let svg_content = self.compile_to_svg(node, settings)?;
                     let relative_path = format!("assets/{}.svg", node_id);
-                    
+
                     // Command to generate the SVG asset
                     plan.add_command(RenderCommand::GenerateCode {
                         code: svg_content,
@@ -328,11 +386,24 @@ impl RendererAdapter for FfmpegAdapter {
 
                     // Build overlay complex filter chain
                     let out_label = format!("v{}", input_idx);
-                    let in_label = if input_idx == 1 { "0:v".to_string() } else { format!("v{}", input_idx - 1) };
-                    
+                    let in_label = if input_idx == 1 {
+                        "0:v".to_string()
+                    } else {
+                        format!("v{}", input_idx - 1)
+                    };
+
                     let filter = format!(
                         "[{}]scale={}:{}[scaled{}]; [{}][scaled{}]overlay=x='{}':y='{}':enable='between(t,0,{})'[{}]",
-                        input_idx, width, height, input_idx, in_label, input_idx, x_expr, y_expr, duration, out_label
+                        input_idx,
+                        width,
+                        height,
+                        input_idx,
+                        in_label,
+                        input_idx,
+                        x_expr,
+                        y_expr,
+                        duration,
+                        out_label
                     );
                     filter_chains.push(filter);
                     input_idx += 1;
@@ -347,8 +418,12 @@ impl RendererAdapter for FfmpegAdapter {
                         let static_y = transform.position.y;
 
                         let out_label = format!("v{}", input_idx);
-                        let in_label = if input_idx == 1 { "0:v".to_string() } else { format!("v{}", input_idx - 1) };
-                        
+                        let in_label = if input_idx == 1 {
+                            "0:v".to_string()
+                        } else {
+                            format!("v{}", input_idx - 1)
+                        };
+
                         let filter = format!(
                             "[{}][{}]overlay=x='{}':y='{}':enable='between(t,0,{})'[{}]",
                             in_label, input_idx, static_x, static_y, duration, out_label
@@ -395,7 +470,9 @@ impl RendererAdapter for FfmpegAdapter {
         // Standard sandboxed execution of the render plan's commands
         for cmd in &plan.commands {
             match cmd {
-                RenderCommand::GenerateCode { code, output_path, .. } => {
+                RenderCommand::GenerateCode {
+                    code, output_path, ..
+                } => {
                     let path = Path::new(output_path);
                     if let Some(parent) = path.parent() {
                         std::fs::create_dir_all(parent).map_err(|e| {
@@ -406,7 +483,13 @@ impl RendererAdapter for FfmpegAdapter {
                         ExecuteError::IoError(format!("Failed to write SVG code: {}", e))
                     })?;
                 }
-                RenderCommand::ExecuteProcess { command, args, env, timeout_secs, working_dir } => {
+                RenderCommand::ExecuteProcess {
+                    command,
+                    args,
+                    env,
+                    timeout_secs,
+                    working_dir,
+                } => {
                     let mut process = tokio::process::Command::new(command);
                     process.args(args);
                     if let Some(dir) = working_dir {
@@ -442,7 +525,9 @@ impl RendererAdapter for FfmpegAdapter {
                         }
                         Ok(Err(e)) => {
                             if command == "ffmpeg" {
-                                stdout.push_str("\nffmpeg not found, falling back to mock output.mp4 creation.");
+                                stdout.push_str(
+                                    "\nffmpeg not found, falling back to mock output.mp4 creation.",
+                                );
                                 let out_path = Path::new("output.mp4");
                                 std::fs::write(out_path, "mock mp4 content").unwrap_or(());
                             } else {
@@ -453,7 +538,9 @@ impl RendererAdapter for FfmpegAdapter {
                             }
                         }
                         Err(_) => {
-                            return Err(ExecuteError::Timeout { timeout_secs: *timeout_secs });
+                            return Err(ExecuteError::Timeout {
+                                timeout_secs: *timeout_secs,
+                            });
                         }
                     }
                 }
@@ -503,9 +590,9 @@ impl RendererAdapter for FfmpegAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use scene_ir::components::{Shape, Transform, Style};
-    use scene_ir::types::{Color, DurationSecs, NodeId};
+    use scene_ir::components::{Shape, Style, Transform};
     use scene_ir::timeline::Keyframe;
+    use scene_ir::types::{Color, DurationSecs, NodeId};
 
     #[test]
     fn test_ffmpeg_adapter_properties() {
@@ -545,7 +632,9 @@ mod tests {
 
         let settings = RenderSettings::default();
         let svg = adapter.compile_to_svg(&node, &settings).unwrap();
-        assert!(svg.contains("<rect x=\"0\" y=\"0\" width=\"100\" height=\"50\" rx=\"5\" ry=\"5\""));
+        assert!(
+            svg.contains("<rect x=\"0\" y=\"0\" width=\"100\" height=\"50\" rx=\"5\" ry=\"5\"")
+        );
         assert!(svg.contains("fill=\"rgb(255,0,0)\""));
     }
 
@@ -595,9 +684,12 @@ mod tests {
         let plan = adapter.compile(&scene, &settings).unwrap();
         assert_eq!(plan.provider_name, "ffmpeg");
         assert_eq!(plan.commands.len(), 2); // 1. generate SVG, 2. execute ffmpeg process
-        
+
         let gen_cmd = &plan.commands[0];
-        if let RenderCommand::GenerateCode { code, output_path, .. } = gen_cmd {
+        if let RenderCommand::GenerateCode {
+            code, output_path, ..
+        } = gen_cmd
+        {
             assert!(code.contains("<circle cx=\"25\" cy=\"25\" r=\"25\""));
             assert_eq!(output_path, &format!("assets/{}.svg", node_id));
         } else {

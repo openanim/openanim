@@ -8,8 +8,19 @@ members = [
     "crates/renderers",
     "crates/orchestrator",
     "crates/llm_compiler",
+    "crates/engine_api",
     "crates/studio",
-    "crates/cli",
+]
+default-members = [
+    "crates/scene_ir",
+    "crates/scene_graph",
+    "crates/scene_diff",
+    "crates/hasher",
+    "crates/renderer_core",
+    "crates/renderers",
+    "crates/orchestrator",
+    "crates/llm_compiler",
+    "crates/engine_api",
 ]
 resolver = "2"
 
@@ -47,9 +58,6 @@ bitflags = "2.0"
 tokio = { version = "1.0", features = ["full"] }
 async-trait = "0.1"
 
-# CLI
-clap = { version = "4.0", features = ["derive"] }
-
 # Time
 chrono = { version = "0.4", features = ["serde"] }
 
@@ -59,3 +67,6 @@ scene_graph = { path = "crates/scene_graph" }
 scene_diff = { path = "crates/scene_diff" }
 hasher = { path = "crates/hasher" }
 renderer_core = { path = "crates/renderer_core" }
+orchestrator = { path = "crates/orchestrator" }
+llm_compiler = { path = "crates/llm_compiler" }
+engine_api = { path = "crates/engine_api" }

@@ -14,18 +14,14 @@ use crate::types::NodeId;
 #[derive(Debug, Error)]
 pub enum ValidationError {
     #[error("Node {node_id} references non-existent parent {parent_id}")]
-    OrphanedParentRef {
-        node_id: NodeId,
-        parent_id: NodeId,
-    },
+    OrphanedParentRef { node_id: NodeId, parent_id: NodeId },
 
     #[error("Node {node_id} lists child {child_id} which does not exist")]
-    MissingChild {
-        node_id: NodeId,
-        child_id: NodeId,
-    },
+    MissingChild { node_id: NodeId, child_id: NodeId },
 
-    #[error("Node {child_id} has parent {expected_parent} but is listed as child of {actual_parent}")]
+    #[error(
+        "Node {child_id} has parent {expected_parent} but is listed as child of {actual_parent}"
+    )]
     InconsistentParentChild {
         child_id: NodeId,
         expected_parent: NodeId,
@@ -250,7 +246,11 @@ mod tests {
             metadata: Default::default(),
         };
         let errors = validate_scene(&scene);
-        assert!(errors.iter().any(|e| matches!(e, ValidationError::MissingRootNode { .. })));
+        assert!(
+            errors
+                .iter()
+                .any(|e| matches!(e, ValidationError::MissingRootNode { .. }))
+        );
     }
 
     #[test]
@@ -267,7 +267,11 @@ mod tests {
             metadata: Default::default(),
         };
         let errors = validate_scene(&scene);
-        assert!(errors.iter().any(|e| matches!(e, ValidationError::DuplicateNodeId { .. })));
+        assert!(
+            errors
+                .iter()
+                .any(|e| matches!(e, ValidationError::DuplicateNodeId { .. }))
+        );
     }
 
     #[test]
@@ -282,7 +286,11 @@ mod tests {
             metadata: Default::default(),
         };
         let errors = validate_scene(&scene);
-        assert!(errors.iter().any(|e| matches!(e, ValidationError::EmptyScene)));
+        assert!(
+            errors
+                .iter()
+                .any(|e| matches!(e, ValidationError::EmptyScene))
+        );
     }
 
     #[test]
@@ -302,6 +310,10 @@ mod tests {
         };
         let errors = validate_scene(&scene);
         // Will have both RootHasParent and OrphanedParentRef
-        assert!(errors.iter().any(|e| matches!(e, ValidationError::OrphanedParentRef { .. })));
+        assert!(
+            errors
+                .iter()
+                .any(|e| matches!(e, ValidationError::OrphanedParentRef { .. }))
+        );
     }
 }

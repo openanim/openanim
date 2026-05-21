@@ -21,7 +21,8 @@ impl History {
     /// Push a new snapshot. Discards any redo history after current position.
     pub fn push(&mut self, snapshot: Snapshot) {
         // Truncate any future snapshots (discard redo branch).
-        self.snapshots.truncate(self.current + if self.snapshots.is_empty() { 0 } else { 1 });
+        self.snapshots
+            .truncate(self.current + if self.snapshots.is_empty() { 0 } else { 1 });
         self.snapshots.push(snapshot);
         self.current = self.snapshots.len() - 1;
     }
@@ -96,10 +97,7 @@ mod tests {
         let mut history = History::new();
         history.push(make_snap("v1"));
         assert_eq!(history.len(), 1);
-        assert_eq!(
-            history.current().unwrap().message,
-            Some("v1".to_string())
-        );
+        assert_eq!(history.current().unwrap().message, Some("v1".to_string()));
     }
 
     #[test]

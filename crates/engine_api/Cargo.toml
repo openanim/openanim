@@ -1,0 +1,25 @@
+[package]
+name = "engine_api"
+description = "OpenAnim embeddable engine API"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+scene_ir = { workspace = true }
+scene_diff = { workspace = true }
+orchestrator = { workspace = true }
+llm_compiler = { workspace = true }
+renderer_core = { workspace = true }
+anyhow = { workspace = true }
+
+[features]
+default = ["ffmpeg"]
+ffmpeg = ["orchestrator/ffmpeg"]
+manim = ["orchestrator/manim"]
+mermaid = ["orchestrator/mermaid"]
+remotion = ["orchestrator/remotion"]
+all-renderers = ["orchestrator/all-renderers"]

@@ -32,8 +32,11 @@ openanim/
 │   ├── scene_diff/      # IR versioning, diffing, patching
 │   ├── hasher/          # Content-hashing for artifact caching
 │   ├── renderer_core/   # Renderer adapter trait & contracts
-│   └── cli/             # Command-line interface
-└── python/              # Python bindings (PyO3/maturin)
+│   ├── orchestrator/    # Engine render orchestration and cache use
+│   ├── llm_compiler/    # Optional natural-language to Scene IR compiler
+│   ├── engine_api/      # Embeddable API for SaaS and Rust integrations
+│   └── studio/          # Optional Rust-only local developer console
+└── Papers/              # Research references, not needed in runtime images
 ```
 
 ## Quick Start
@@ -42,15 +45,23 @@ openanim/
 # Build the engine
 cargo build --workspace
 
+# Build the embeddable engine API and default renderer set
+cargo build -p engine_api --release
+
 # Run tests
 cargo test --workspace
 
-# CLI usage
-cargo run -p cli -- --help
-cargo run -p cli -- validate my_project.json
-cargo run -p cli -- schema --type-name Project
-cargo run -p cli -- hash my_project.json
+# Optional local developer console
+cargo run -p studio -- --dir .
 ```
+
+## Deployment Boundary
+
+The local Studio is not part of the production engine surface. SaaS code should
+depend on `engine_api` directly and choose the renderer features it needs. The
+old Vite/React app and general CLI have been removed. For a SaaS Docker image,
+copy only the service binary using `engine_api` plus the external renderer tools
+enabled for that deployment.
 
 ## Design Principles
 

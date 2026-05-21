@@ -73,11 +73,8 @@ pub trait RendererAdapter: Send + Sync {
     fn supported_node_types(&self) -> &[NodeType];
 
     /// Compile a scene + settings into a render plan.
-    fn compile(
-        &self,
-        scene: &Scene,
-        settings: &RenderSettings,
-    ) -> Result<RenderPlan, CompileError>;
+    fn compile(&self, scene: &Scene, settings: &RenderSettings)
+    -> Result<RenderPlan, CompileError>;
 
     /// Execute a render plan, producing an artifact.
     async fn execute(&self, plan: &RenderPlan) -> Result<RenderArtifact, ExecuteError>;

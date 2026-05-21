@@ -10,5 +10,5 @@ pub mod snapshot;
 
 pub use diff::{DiffOp, SceneDiff};
 pub use history::History;
-pub use patch::{apply_diff, PatchError};
+pub use patch::{PatchError, apply_diff};
 pub use snapshot::Snapshot;

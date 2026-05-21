@@ -1,16 +1,18 @@
 //! Peer Manim renderer adapter.
 
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use async_trait::async_trait;
 
+use scene_ir::components::ShapeKind;
 use scene_ir::node::NodeType;
 use scene_ir::project::RenderSettings;
 use scene_ir::scene::Scene;
-use scene_ir::components::ShapeKind;
 use scene_ir::types::Color;
 
-use renderer_core::adapter::{CompileError, ExecuteError, HealthError, HealthStatus, RendererAdapter};
+use renderer_core::adapter::{
+    CompileError, ExecuteError, HealthError, HealthStatus, RendererAdapter,
+};
 use renderer_core::artifact::{ArtifactStatus, RenderArtifact};
 use renderer_core::plan::{RenderCommand, RenderPlan};
 
@@ -60,8 +62,11 @@ impl RendererAdapter for ManimAdapter {
         python_code.push_str("from manim import *\n\n");
         python_code.push_str("class OpenAnimScene(Scene):\n");
         python_code.push_str("    def construct(self):\n");
-        python_code.push_str(&format!("        # Config duration: {}s\n", scene.duration.0));
-        
+        python_code.push_str(&format!(
+            "        # Config duration: {}s\n",
+            scene.duration.0
+        ));
+
         let mut has_renderable = false;
 
         for node in &scene.nodes {
@@ -99,16 +104,23 @@ impl RendererAdapter for ManimAdapter {
                 NodeType::Shape => {
                     if let Some(shape) = &node.components.shape {
                         match &shape.kind {
-                            ShapeKind::Rectangle { width: w, height: h, .. } => {
+                            ShapeKind::Rectangle {
+                                width: w,
+                                height: h,
+                                ..
+                            } => {
                                 python_code.push_str(&format!(
                                     "        {} = Rectangle(width={}, height={})\n",
-                                    node_id_clean, w / 100.0, h / 100.0
+                                    node_id_clean,
+                                    w / 100.0,
+                                    h / 100.0
                                 ));
                             }
                             ShapeKind::Circle { radius: r } => {
                                 python_code.push_str(&format!(
                                     "        {} = Circle(radius={})\n",
-                                    node_id_clean, r / 100.0
+                                    node_id_clean,
+                                    r / 100.0
                                 ));
                             }
                             ShapeKind::Line { start, end } => {
@@ -134,15 +146,16 @@ impl RendererAdapter for ManimAdapter {
                     if let Some(text) = &node.components.text {
                         python_code.push_str(&format!(
                             "        {} = Text({:?}, font={:?}, font_size={})\n",
-                            node_id_clean, text.content, text.font.family, text.font.size * 0.5
+                            node_id_clean,
+                            text.content,
+                            text.font.family,
+                            text.font.size * 0.5
                         ));
                     }
                 }
                 _ => {
-                    python_code.push_str(&format!(
-                        "        {} = Circle(radius=0.5)\n",
-                        node_id_clean
-                    ));
+                    python_code
+                        .push_str(&format!("        {} = Circle(radius=0.5)\n", node_id_clean));
                 }
             }
 
@@ -163,7 +176,9 @@ impl RendererAdapter for ManimAdapter {
         }
 
         if !has_renderable {
-            return Err(CompileError::InvalidScene("No renderable nodes found for Manim".to_string()));
+            return Err(CompileError::InvalidScene(
+                "No renderable nodes found for Manim".to_string(),
+            ));
         }
 
         // Scene duration wait
@@ -201,7 +216,9 @@ impl RendererAdapter for ManimAdapter {
 
         for cmd in &plan.commands {
             match cmd {
-                RenderCommand::GenerateCode { code, output_path, .. } => {
+                RenderCommand::GenerateCode {
+                    code, output_path, ..
+                } => {
                     let path = Path::new(output_path);
                     if let Some(parent) = path.parent() {
                         std::fs::create_dir_all(parent).map_err(|e| {
@@ -212,7 +229,13 @@ impl RendererAdapter for ManimAdapter {
                         ExecuteError::IoError(format!("Failed to write Python file: {}", e))
                     })?;
                 }
-                RenderCommand::ExecuteProcess { command, args, env, timeout_secs, working_dir } => {
+                RenderCommand::ExecuteProcess {
+                    command,
+                    args,
+                    env,
+                    timeout_secs,
+                    working_dir,
+                } => {
                     let mut process = tokio::process::Command::new(command);
                     process.args(args);
                     if let Some(dir) = working_dir {
@@ -229,7 +252,10 @@ impl RendererAdapter for ManimAdapter {
                             // media/videos/{script_name}/720p30/{output_arg}
                             // We can build the expected path or copy it.
                             let file_name = &args[pos + 1];
-                            last_output_path = PathBuf::from("media/videos").join("output").join("720p30").join(file_name);
+                            last_output_path = PathBuf::from("media/videos")
+                                .join("output")
+                                .join("720p30")
+                                .join(file_name);
                         }
                     }
 
@@ -258,15 +284,25 @@ impl RendererAdapter for ManimAdapter {
                                 if let Some(parent) = last_output_path.parent() {
                                     std::fs::create_dir_all(parent).unwrap_or(());
                                 }
-                                std::fs::write(&last_output_path, vec![0; 100]).map_err(|io_err| {
-                                    ExecuteError::IoError(format!("Failed to write mock MP4: {}", io_err))
-                                })?;
+                                std::fs::write(&last_output_path, vec![0; 100]).map_err(
+                                    |io_err| {
+                                        ExecuteError::IoError(format!(
+                                            "Failed to write mock MP4: {}",
+                                            io_err
+                                        ))
+                                    },
+                                )?;
                             } else {
-                                return Err(ExecuteError::Internal(format!("Failed to run process: {}", e)));
+                                return Err(ExecuteError::Internal(format!(
+                                    "Failed to run process: {}",
+                                    e
+                                )));
                             }
                         }
                         Err(_) => {
-                            return Err(ExecuteError::Timeout { timeout_secs: *timeout_secs });
+                            return Err(ExecuteError::Timeout {
+                                timeout_secs: *timeout_secs,
+                            });
                         }
                     }
                 }
@@ -316,8 +352,8 @@ impl RendererAdapter for ManimAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use scene_ir::node::Node;
     use scene_ir::components::{Shape, Style};
+    use scene_ir::node::Node;
 
     #[test]
     fn test_manim_adapter_properties() {
@@ -360,4 +396,3 @@ mod tests {
         }
     }
 }
-
