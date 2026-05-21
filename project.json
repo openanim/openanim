@@ -1,0 +1,121 @@
+{
+  "id": "e0b746a1-a6e4-4d8e-be8b-87163cb73a5a",
+  "metadata": {
+    "name": "E2E Test Project",
+    "description": "End-to-end verification project for OpenAnim Engine",
+    "version": "0.1.0",
+    "authors": ["Antigravity Developer"],
+    "created_at": "2026-05-21T20:00:00Z"
+  },
+  "scenes": [
+    {
+      "id": "f5d72f9a-c215-4a6c-94eb-b1848a609d52",
+      "name": "Intro Scene",
+      "root_node": "3cbfef20-41bf-4b9e-bd42-83b65ef39b23",
+      "nodes": [
+        {
+          "id": "3cbfef20-41bf-4b9e-bd42-83b65ef39b23",
+          "name": "root",
+          "node_type": "group",
+          "parent": null,
+          "children": ["7c2a71bf-d7e1-4560-843f-7e23bb41ff5c"],
+          "components": {}
+        },
+        {
+          "id": "7c2a71bf-d7e1-4560-843f-7e23bb41ff5c",
+          "name": "ShapeNode",
+          "node_type": "shape",
+          "parent": "3cbfef20-41bf-4b9e-bd42-83b65ef39b23",
+          "children": [],
+          "components": {
+            "shape": {
+              "kind": {
+                "type": "circle",
+                "radius": 50.0
+              }
+            },
+            "style": {
+              "fill": {
+                "r": 0.2,
+                "g": 0.6,
+                "b": 0.8,
+                "a": 1.0
+              },
+              "stroke": {
+                "color": {
+                  "r": 1.0,
+                  "g": 1.0,
+                  "b": 1.0,
+                  "a": 1.0
+                },
+                "width": 3.0,
+                "line_cap": "round",
+                "line_join": "round"
+              },
+              "opacity": 1.0,
+              "z_index": 1,
+              "visible": true
+            },
+            "transform": {
+              "position": {
+                "x": 960.0,
+                "y": 540.0
+              },
+              "scale": {
+                "x": 1.0,
+                "y": 1.0
+              },
+              "rotation": 0.0
+            }
+          }
+        }
+      ],
+      "timeline": {
+        "duration": 5.0,
+        "tracks": [
+          {
+            "target_node": "7c2a71bf-d7e1-4560-843f-7e23bb41ff5c",
+            "property": "position",
+            "keyframes": [
+              {
+                "time": 0.0,
+                "value": {
+                  "type": "scalar",
+                  "value": 0.0
+                },
+                "easing": "ease_in_out"
+              },
+              {
+                "time": 5.0,
+                "value": {
+                  "type": "scalar",
+                  "value": 500.0
+                },
+                "easing": "linear"
+              }
+            ]
+          }
+        ],
+        "events": []
+      },
+      "duration": 5.0,
+      "metadata": {}
+    }
+  ],
+  "assets": {
+    "assets": []
+  },
+  "settings": {
+    "resolution": [1920, 1080],
+    "fps": 60.0,
+    "format": "mp4",
+    "background_color": {
+      "r": 0.05,
+      "g": 0.05,
+      "b": 0.05,
+      "a": 1.0
+    },
+    "anti_aliasing": 4,
+    "pixel_scale": 1.0
+  }
+}

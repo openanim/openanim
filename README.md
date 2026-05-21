@@ -1,79 +1,65 @@
-# OpenAnim (CLI Edition)
+# OpenAnim
 
-OpenAnim automates the creation and execution of mathematical animations using Manim and OpenRouter. It generates Python code for Manim based on natural language descriptions and renders it immediately.
+**A deterministic multimodal animation compilation engine.**
 
-## Features
+OpenAnim is not an "AI video generator" — it's a **compilation engine** where natural language acts as source input, orchestration acts as compilation, execution providers act as runtimes, and render artifacts become the final compiled output.
 
-- **AI-Powered Code Generation**: Uses OpenRouter (openrouter/free) to generate Manim code from your descriptions.
-- **Instant Rendering**: Automatically compiles and renders the generated animation.
-- **Stream Output**: Watch the AI code generation process in real-time.
-- **CLI Only**: Simple, lightweight command-line interface.
+## Architecture
 
-## Prerequisites
-
-- **Python 3.10+** (Recommended)
-- **Manim Community Edition** (`pip install manim`)
-- **OpenAI Python Client** (`pip install openai`)
-- **FFmpeg** (Required for Manim rendering)
-- **OpenRouter API Key** (Get one at [openrouter.ai](https://openrouter.ai/))
-
-## Installation
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/yourusername/OpenAnim.git
-   cd OpenAnim
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   pip install manim openai python-dotenv
-   ```
-
-   _Note: Manim has system dependencies (like FFmpeg). See [Manim Installation Guide](https://docs.manim.community/en/stable/installation.html)._
-
-3. Set up your OpenRouter API key:
-   Create a `.env` file in the project root:
-   ```env
-   OPENROUTER_API_KEY=your_api_key_here
-   ```
-
-## Usage
-
-Run the tool with a description of the animation you want:
-
-```bash
-python app.py "Create a circle that transforms into a square"
+```
+Natural Language → Scene IR → Scene Graph → Renderer Adapters → Artifacts
+                      ↑                           ↑
+                 (like LLVM IR)            (like LLVM backends)
 ```
 
-Or run interactively:
+### Inspirations
 
-```bash
-python app.py
+| System | What it contributes |
+|--------|-------------------|
+| **LLVM** | Stable IR, backend abstraction, compilation passes |
+| **Godot** | Scene graphs, editable node trees, dependency graphs |
+| **Bazel** | Deterministic incremental builds, content-hashing, artifact caching |
+| **OpenHands** | Autonomous repair loops, execution feedback |
+| **ComfyUI** | Local-first composable execution graphs, plugin ecosystems |
+
+## Crate Structure
+
+```
+openanim/
+├── crates/
+│   ├── scene_ir/        # Canonical renderer-agnostic IR types
+│   ├── scene_graph/     # In-memory scene graph runtime
+│   ├── scene_diff/      # IR versioning, diffing, patching
+│   ├── hasher/          # Content-hashing for artifact caching
+│   ├── renderer_core/   # Renderer adapter trait & contracts
+│   └── cli/             # Command-line interface
+└── python/              # Python bindings (PyO3/maturin)
 ```
 
-Then enter your prompt when asked.
+## Quick Start
 
-The tool will:
+```bash
+# Build the engine
+cargo build --workspace
 
-1. Generate the Manim code (saved to `generated_scene.py`).
-2. Ask for confirmation to render.
-3. Render the animation (saved to `media/videos/generated_scene/ql/GenScene.mp4`).
+# Run tests
+cargo test --workspace
 
-## Example Prompts
+# CLI usage
+cargo run -p cli -- --help
+cargo run -p cli -- validate my_project.json
+cargo run -p cli -- schema --type-name Project
+cargo run -p cli -- hash my_project.json
+```
 
-- "Visualize the Pythagorean theorem."
-- "Show a 3D rotating cube with text labels."
-- "Animate a sine wave transforming into a cosine wave."
+## Design Principles
 
-## Project Structure
-
-- `app.py`: Main CLI application.
-- `generated_scene.py`: Temporary file for generated Manim code.
-- `.env`: API configuration.
+1. **IR-First**: The canonical Scene IR is the source of truth. Renderers are disposable execution providers.
+2. **Deterministic**: Same input always produces the same output. Content-hashing enables Bazel-style caching.
+3. **Provider-Agnostic**: Support multiple renderers (Manim, Remotion, Mermaid, FFmpeg) through a unified adapter trait.
+4. **Local-First**: Everything runs locally. No cloud dependency required.
+5. **Incremental**: Scene graph tracks dirty nodes. Only changed subtrees are re-rendered.
 
 ## License
 
-MIT License
+MIT OR Apache-2.0
