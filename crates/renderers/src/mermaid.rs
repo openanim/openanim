@@ -1,15 +1,17 @@
 //! Peer Mermaid Diagram renderer adapter.
 
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use async_trait::async_trait;
 
+use scene_ir::components::DiagramLanguage;
 use scene_ir::node::NodeType;
 use scene_ir::project::RenderSettings;
 use scene_ir::scene::Scene;
-use scene_ir::components::DiagramLanguage;
 
-use renderer_core::adapter::{CompileError, ExecuteError, HealthError, HealthStatus, RendererAdapter};
+use renderer_core::adapter::{
+    CompileError, ExecuteError, HealthError, HealthStatus, RendererAdapter,
+};
 use renderer_core::artifact::{ArtifactStatus, RenderArtifact};
 use renderer_core::plan::{RenderCommand, RenderPlan};
 
@@ -85,7 +87,9 @@ impl RendererAdapter for MermaidAdapter {
         }
 
         if !diagram_found {
-            return Err(CompileError::InvalidScene("No Mermaid diagram node found to render".to_string()));
+            return Err(CompileError::InvalidScene(
+                "No Mermaid diagram node found to render".to_string(),
+            ));
         }
 
         Ok(plan)
@@ -99,7 +103,9 @@ impl RendererAdapter for MermaidAdapter {
 
         for cmd in &plan.commands {
             match cmd {
-                RenderCommand::GenerateCode { code, output_path, .. } => {
+                RenderCommand::GenerateCode {
+                    code, output_path, ..
+                } => {
                     let path = Path::new(output_path);
                     if let Some(parent) = path.parent() {
                         std::fs::create_dir_all(parent).map_err(|e| {
@@ -110,7 +116,13 @@ impl RendererAdapter for MermaidAdapter {
                         ExecuteError::IoError(format!("Failed to write Mermaid mmd file: {}", e))
                     })?;
                 }
-                RenderCommand::ExecuteProcess { command, args, env, timeout_secs, working_dir } => {
+                RenderCommand::ExecuteProcess {
+                    command,
+                    args,
+                    env,
+                    timeout_secs,
+                    working_dir,
+                } => {
                     // In a test/CI or missing mmdc environment, we might want to mock the svg creation
                     // if mmdc is not installed, so we don't break execution tests.
                     // But we'll try spawning it first.
@@ -158,14 +170,22 @@ impl RendererAdapter for MermaidAdapter {
                                 }
                                 let mock_svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="gray"/><text x="10" y="50" fill="white">Mermaid Mock</text></svg>"#;
                                 std::fs::write(&last_output_path, mock_svg).map_err(|io_err| {
-                                    ExecuteError::IoError(format!("Failed to write mock SVG: {}", io_err))
+                                    ExecuteError::IoError(format!(
+                                        "Failed to write mock SVG: {}",
+                                        io_err
+                                    ))
                                 })?;
                             } else {
-                                return Err(ExecuteError::Internal(format!("Failed to run process: {}", e)));
+                                return Err(ExecuteError::Internal(format!(
+                                    "Failed to run process: {}",
+                                    e
+                                )));
                             }
                         }
                         Err(_) => {
-                            return Err(ExecuteError::Timeout { timeout_secs: *timeout_secs });
+                            return Err(ExecuteError::Timeout {
+                                timeout_secs: *timeout_secs,
+                            });
                         }
                     }
                 }
@@ -192,7 +212,10 @@ impl RendererAdapter for MermaidAdapter {
         let mut cmd = tokio::process::Command::new("mmdc");
         cmd.arg("--version");
         let output = cmd.output().await.map_err(|e| {
-            HealthError::NotInstalled(format!("Mermaid CLI (mmdc) binary not found on PATH: {}", e))
+            HealthError::NotInstalled(format!(
+                "Mermaid CLI (mmdc) binary not found on PATH: {}",
+                e
+            ))
         })?;
 
         if output.status.success() {
@@ -215,8 +238,8 @@ impl RendererAdapter for MermaidAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use scene_ir::node::Node;
     use scene_ir::components::Diagram;
+    use scene_ir::node::Node;
 
     #[test]
     fn test_mermaid_adapter_properties() {
@@ -259,4 +282,3 @@ mod tests {
         }
     }
 }
-

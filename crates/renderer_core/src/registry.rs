@@ -39,13 +39,13 @@ impl RendererRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::adapter::{CompileError, ExecuteError, HealthError, HealthStatus};
+    use crate::artifact::RenderArtifact;
+    use crate::plan::RenderPlan;
     use async_trait::async_trait;
     use scene_ir::node::NodeType;
     use scene_ir::project::RenderSettings;
     use scene_ir::scene::Scene;
-    use crate::adapter::{CompileError, ExecuteError, HealthError, HealthStatus};
-    use crate::artifact::RenderArtifact;
-    use crate::plan::RenderPlan;
 
     // A mock renderer adapter for testing
     struct MockRenderer {
@@ -68,7 +68,11 @@ mod tests {
             &self.supported_types
         }
 
-        fn compile(&self, scene: &Scene, _settings: &RenderSettings) -> Result<RenderPlan, CompileError> {
+        fn compile(
+            &self,
+            scene: &Scene,
+            _settings: &RenderSettings,
+        ) -> Result<RenderPlan, CompileError> {
             Ok(RenderPlan::new(&self.name, scene.id))
         }
 
@@ -109,7 +113,7 @@ mod tests {
     #[test]
     fn test_registry_multiple_registration() {
         let mut registry = RendererRegistry::new();
-        
+
         registry.register(Box::new(MockRenderer {
             name: "manim".to_string(),
             version: "0.18.1".to_string(),

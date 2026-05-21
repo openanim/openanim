@@ -1,7 +1,7 @@
 //! Artifact cache management.
 
-use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -46,7 +46,7 @@ impl ArtifactCache {
 
         let size_bytes = std::fs::metadata(artifact_file)?.len();
         let cached_file_path = self.cache_dir.join(format!("{}.{}", key, format));
-        
+
         // Copy the artifact
         std::fs::copy(artifact_file, &cached_file_path)?;
 
@@ -64,9 +64,8 @@ impl ArtifactCache {
         };
 
         let manifest_path = self.cache_dir.join(format!("{}.json", key));
-        let manifest_str = serde_json::to_string_pretty(&manifest).map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::Other, e.to_string())
-        })?;
+        let manifest_str = serde_json::to_string_pretty(&manifest)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
         std::fs::write(&manifest_path, manifest_str)?;
 
         Ok(cached_file_path)
@@ -115,7 +114,7 @@ mod tests {
         std::fs::write(&dummy_src, b"fake video bytes").unwrap();
 
         let key = "test_key_blake3_hash";
-        
+
         // Assert miss
         assert!(cache.get(key).is_none());
 
@@ -134,4 +133,3 @@ mod tests {
         assert!(!cached_path.exists());
     }
 }
-

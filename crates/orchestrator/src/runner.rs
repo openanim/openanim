@@ -1,17 +1,21 @@
-//! Scene compile and execution Orchestrator.
+//! Scene compile and execution orchestration.
 
 use std::path::PathBuf;
 
-use scene_ir::scene::Scene;
-use scene_ir::project::RenderSettings;
+use renderer_core::artifact::{ArtifactStatus, RenderArtifact};
+use renderer_core::registry::RendererRegistry;
+use scene_ir::components::{DiagramLanguage, ImageContent};
 use scene_ir::node::NodeType;
-use scene_ir::components::ImageContent;
+use scene_ir::project::RenderSettings;
+use scene_ir::scene::Scene;
 use scene_ir::types::{AssetRef, ImageFit};
 
-use renderer_core::registry::RendererRegistry;
-use renderer_core::artifact::{RenderArtifact, ArtifactStatus};
-
 use crate::cache::ArtifactCache;
+
+#[derive(Debug, Clone, Default)]
+pub struct RenderOptions {
+    pub preferred_provider: Option<String>,
+}
 
 pub struct Orchestrator {
     pub registry: RendererRegistry,
@@ -21,33 +25,47 @@ pub struct Orchestrator {
 impl Orchestrator {
     pub fn new(cache_dir: PathBuf) -> Self {
         let mut registry = RendererRegistry::new();
+
+        #[cfg(feature = "ffmpeg")]
         registry.register(Box::new(renderers::FfmpegAdapter::new()));
+        #[cfg(feature = "mermaid")]
         registry.register(Box::new(renderers::MermaidAdapter::new()));
+        #[cfg(feature = "manim")]
         registry.register(Box::new(renderers::ManimAdapter::new()));
+        #[cfg(feature = "remotion")]
         registry.register(Box::new(renderers::RemotionAdapter::new()));
 
-        let cache = ArtifactCache::new(cache_dir);
-
-        Self { registry, cache }
+        Self {
+            registry,
+            cache: ArtifactCache::new(cache_dir),
+        }
     }
 
-    /// Renders a Scene graph, utilizing Bazel-style caching and graph partitioning.
-    pub async fn render(&self, scene: &Scene, settings: &RenderSettings) -> Result<RenderArtifact, anyhow::Error> {
+    pub async fn render(
+        &self,
+        scene: &Scene,
+        settings: &RenderSettings,
+    ) -> Result<RenderArtifact, anyhow::Error> {
+        self.render_with_options(scene, settings, &RenderOptions::default())
+            .await
+    }
+
+    /// Renders a scene using the best registered provider for the scene shape.
+    ///
+    /// FFmpeg is preferred as the compositor/final artifact provider for ordinary
+    /// 2D scenes. Specialized providers are used only when the scene benefits
+    /// from them and the adapter was compiled into this build.
+    pub async fn render_with_options(
+        &self,
+        scene: &Scene,
+        settings: &RenderSettings,
+        options: &RenderOptions,
+    ) -> Result<RenderArtifact, anyhow::Error> {
+        let provider_name = self.choose_provider(scene, options)?;
         let scene_hash = hasher::hash_scene(scene);
         let config_hash = hasher::hash_render_config(settings);
+        let cache_key = hasher::cache_key(&scene_hash, &config_hash, &provider_name);
 
-        // Determine final composition provider:
-        // Remotion and Manim are peer renderers, but if specialized Mermaid nodes exist,
-        // we sub-render them to SVGs and layer them via FFmpeg.
-        let provider_name = if scene.nodes.iter().any(|n| n.node_type == NodeType::Diagram) {
-            "ffmpeg" // Fallback to FFmpeg as main laying linking engine
-        } else {
-            "ffmpeg" // Default compositing engine
-        };
-
-        let cache_key = hasher::cache_key(&scene_hash, &config_hash, provider_name);
-
-        // 1. Cache hit check
         if let Some(cached_file) = self.cache.get(&cache_key) {
             return Ok(RenderArtifact {
                 id: uuid::Uuid::now_v7(),
@@ -56,7 +74,7 @@ impl Orchestrator {
                 format: scene_ir::types::OutputFormat::Mp4,
                 file_size_bytes: Some(0),
                 render_duration: std::time::Duration::from_secs(0),
-                stdout: "Cache hit: retrieved from Merkle cache substrate".to_string(),
+                stdout: "Cache hit: retrieved from content-addressed render cache".to_string(),
                 stderr: String::new(),
                 exit_code: 0,
                 content_hash: Some(cache_key),
@@ -64,58 +82,25 @@ impl Orchestrator {
             });
         }
 
-        // 2. Graph Partitioning
-        // Partition specialized nodes (e.g. NodeType::Diagram) to Mermaid renderer
         let mut composition_scene = scene.clone();
+        self.materialize_specialized_nodes(&mut composition_scene, settings)
+            .await?;
 
-        for node in &mut composition_scene.nodes {
-            if node.node_type == NodeType::Diagram {
-                // If it is a Mermaid diagram, sub-render it first!
-                if let Some(diagram) = &node.components.diagram {
-                    if diagram.language == scene_ir::components::DiagramLanguage::Mermaid {
-                        let mermaid_adapter = self.registry.get("mermaid")
-                            .ok_or_else(|| anyhow::anyhow!("Mermaid adapter not registered"))?;
+        let main_adapter = self.registry.get(&provider_name).ok_or_else(|| {
+            anyhow::anyhow!("Renderer adapter '{}' is not registered", provider_name)
+        })?;
 
-                        // Create mini-scene containing only this diagram node for the mermaid compiler
-                        let mut sub_scene = Scene::new("sub_diagram");
-                        sub_scene.nodes.push(node.clone());
+        let main_plan = main_adapter
+            .compile(&composition_scene, settings)
+            .map_err(|e| {
+                anyhow::anyhow!("Failed to compile scene with {}: {:?}", provider_name, e)
+            })?;
 
-                        let plan = mermaid_adapter.compile(&sub_scene, settings)
-                            .map_err(|e| anyhow::anyhow!("Failed to compile Mermaid sub-scene: {:?}", e))?;
+        let mut artifact = main_adapter
+            .execute(&main_plan)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to execute {} render: {:?}", provider_name, e))?;
 
-                        let sub_artifact = mermaid_adapter.execute(&plan).await
-                            .map_err(|e| anyhow::anyhow!("Failed to execute Mermaid sub-render: {:?}", e))?;
-
-                        // Replace node in composite scene with NodeType::Image pointing to output SVG
-                        node.node_type = NodeType::Image;
-                        node.components.image = Some(ImageContent {
-                            asset_ref: AssetRef {
-                                asset_id: uuid::Uuid::now_v7().to_string(),
-                                path: sub_artifact.output_path.to_string_lossy().into_owned(),
-                                mime_type: Some("image/svg+xml".to_string()),
-                                content_hash: None,
-                            },
-                            fit: ImageFit::Contain,
-                            width: None,
-                            height: None,
-                        });
-                        node.components.diagram = None;
-                    }
-                }
-            }
-        }
-
-        // 3. Main Composition Render
-        let main_adapter = self.registry.get(provider_name)
-            .ok_or_else(|| anyhow::anyhow!("Main adapter '{}' not found", provider_name))?;
-
-        let main_plan = main_adapter.compile(&composition_scene, settings)
-            .map_err(|e| anyhow::anyhow!("Failed to compile composition scene: {:?}", e))?;
-
-        let mut artifact = main_adapter.execute(&main_plan).await
-            .map_err(|e| anyhow::anyhow!("Failed to execute composition render: {:?}", e))?;
-
-        // 4. Cache populate
         let format_str = match artifact.format {
             scene_ir::types::OutputFormat::Mp4 => "mp4",
             scene_ir::types::OutputFormat::Svg => "svg",
@@ -123,28 +108,120 @@ impl Orchestrator {
             _ => "mp4",
         };
 
-        if let Ok(cached_file) = self.cache.put(&cache_key, &artifact.output_path, format_str) {
+        if let Ok(cached_file) = self
+            .cache
+            .put(&cache_key, &artifact.output_path, format_str)
+        {
             artifact.output_path = cached_file;
             artifact.content_hash = Some(cache_key);
         }
 
         Ok(artifact)
     }
+
+    fn choose_provider(
+        &self,
+        scene: &Scene,
+        options: &RenderOptions,
+    ) -> Result<String, anyhow::Error> {
+        if let Some(provider) = &options.preferred_provider {
+            if self.registry.get(provider).is_some() {
+                return Ok(provider.clone());
+            }
+            anyhow::bail!("Preferred renderer '{}' is not registered", provider);
+        }
+
+        let has_math_or_code = scene
+            .nodes
+            .iter()
+            .any(|node| matches!(node.node_type, NodeType::Math | NodeType::Code));
+        if has_math_or_code && self.registry.get("manim").is_some() {
+            return Ok("manim".to_string());
+        }
+
+        let has_rich_web_nodes = scene.nodes.iter().any(|node| {
+            node.node_type == NodeType::Custom && self.registry.get("remotion").is_some()
+        });
+        if has_rich_web_nodes {
+            return Ok("remotion".to_string());
+        }
+
+        if self.registry.get("ffmpeg").is_some() {
+            return Ok("ffmpeg".to_string());
+        }
+
+        self.registry
+            .list()
+            .first()
+            .map(|name| (*name).to_string())
+            .ok_or_else(|| anyhow::anyhow!("No renderer adapters are registered"))
+    }
+
+    async fn materialize_specialized_nodes(
+        &self,
+        scene: &mut Scene,
+        settings: &RenderSettings,
+    ) -> Result<(), anyhow::Error> {
+        for node in &mut scene.nodes {
+            if node.node_type != NodeType::Diagram {
+                continue;
+            }
+
+            let Some(diagram) = &node.components.diagram else {
+                continue;
+            };
+
+            if diagram.language != DiagramLanguage::Mermaid {
+                continue;
+            }
+
+            let Some(mermaid_adapter) = self.registry.get("mermaid") else {
+                continue;
+            };
+
+            let mut sub_scene = Scene::new("sub_diagram");
+            sub_scene.nodes.push(node.clone());
+
+            let plan = mermaid_adapter
+                .compile(&sub_scene, settings)
+                .map_err(|e| anyhow::anyhow!("Failed to compile Mermaid diagram: {:?}", e))?;
+
+            let sub_artifact = mermaid_adapter
+                .execute(&plan)
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to render Mermaid diagram: {:?}", e))?;
+
+            node.node_type = NodeType::Image;
+            node.components.image = Some(ImageContent {
+                asset_ref: AssetRef {
+                    asset_id: uuid::Uuid::now_v7().to_string(),
+                    path: sub_artifact.output_path.to_string_lossy().into_owned(),
+                    mime_type: Some("image/svg+xml".to_string()),
+                    content_hash: None,
+                },
+                fit: ImageFit::Contain,
+                width: None,
+                height: None,
+            });
+            node.components.diagram = None;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::tempdir;
+    use scene_ir::components::{Diagram, DiagramLanguage, Shape};
     use scene_ir::node::Node;
-    use scene_ir::components::{Shape, Diagram, DiagramLanguage};
+    use tempfile::tempdir;
 
     #[tokio::test]
-    async fn test_orchestrator_cache_hit_and_graph_partitioning() {
+    async fn test_orchestrator_cache_hit() {
         let cache_dir = tempdir().unwrap();
         let orchestrator = Orchestrator::new(cache_dir.path().to_path_buf());
 
-        // Construct scene with specialized Mermaid Diagram node
         let mut scene = Scene::new("Graph Partitioning Scene");
         let mut diag_node = Node::new(NodeType::Diagram);
         diag_node.components.diagram = Some(Diagram {
@@ -153,7 +230,6 @@ mod tests {
         });
         scene.nodes.push(diag_node);
 
-        // Also add a shape node
         let mut shape_node = Node::new(NodeType::Shape);
         shape_node.components.shape = Some(Shape {
             kind: scene_ir::components::ShapeKind::Circle { radius: 10.0 },
@@ -161,17 +237,13 @@ mod tests {
         scene.nodes.push(shape_node);
 
         let settings = RenderSettings::default();
-
-        // Perform rendering (this will cache miss, run sub-render, compile main scene)
         let artifact = orchestrator.render(&scene, &settings).await.unwrap();
         assert_eq!(artifact.status, ArtifactStatus::Success);
         assert!(artifact.content_hash.is_some());
 
-        // Perform second rendering to assert CACHE HIT
         let cached_artifact = orchestrator.render(&scene, &settings).await.unwrap();
         assert_eq!(cached_artifact.status, ArtifactStatus::Success);
         assert_eq!(cached_artifact.content_hash, artifact.content_hash);
         assert!(cached_artifact.stdout.contains("Cache hit"));
     }
 }
-

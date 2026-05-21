@@ -193,7 +193,11 @@ mod tests {
         };
 
         let diff = diff_scenes(&scene1, &scene2);
-        assert!(diff.ops.iter().any(|op| matches!(op, DiffOp::RemoveNode { .. })));
+        assert!(
+            diff.ops
+                .iter()
+                .any(|op| matches!(op, DiffOp::RemoveNode { .. }))
+        );
     }
 
     #[test]
@@ -203,7 +207,11 @@ mod tests {
         scene2.nodes[0].components.transform = Some(Transform::at(100.0, 200.0));
 
         let diff = diff_scenes(&scene1, &scene2);
-        assert!(diff.ops.iter().any(|op| matches!(op, DiffOp::UpdateTransform { .. })));
+        assert!(
+            diff.ops
+                .iter()
+                .any(|op| matches!(op, DiffOp::UpdateTransform { .. }))
+        );
     }
 
     #[test]
@@ -213,7 +221,11 @@ mod tests {
         scene2.nodes[0].components.style = Some(Style::fill(Color::rgb(1.0, 0.0, 0.0)));
 
         let diff = diff_scenes(&scene1, &scene2);
-        assert!(diff.ops.iter().any(|op| matches!(op, DiffOp::UpdateStyle { .. })));
+        assert!(
+            diff.ops
+                .iter()
+                .any(|op| matches!(op, DiffOp::UpdateStyle { .. }))
+        );
     }
 
     #[test]

@@ -10,15 +10,11 @@ rust-version.workspace = true
 
 [dependencies]
 scene_ir = { path = "../scene_ir" }
-scene_graph = { path = "../scene_graph" }
-scene_diff = { path = "../scene_diff" }
-orchestrator = { path = "../orchestrator" }
-llm_compiler = { path = "../llm_compiler" }
+engine_api = { path = "../engine_api", features = ["all-renderers"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 axum = { version = "0.7" }
-tower-http = { version = "0.5", features = ["cors", "fs"] }
-rust-embed = { version = "8.0", features = ["interpolate-folder-path"] }
+tower-http = { version = "0.5", features = ["cors"] }

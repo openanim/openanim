@@ -7,7 +7,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{AssetRef, Color, FontSpec, ImageFit, Stroke, TextAlign, TextVerticalAlign, Vec2};
+use crate::types::{
+    AssetRef, Color, FontSpec, ImageFit, Stroke, TextAlign, TextVerticalAlign, Vec2,
+};
 
 // ---------------------------------------------------------------------------
 // Transform

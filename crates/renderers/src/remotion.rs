@@ -1,16 +1,18 @@
 //! Peer Remotion renderer adapter.
 
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use async_trait::async_trait;
 
+use scene_ir::components::ShapeKind;
 use scene_ir::node::NodeType;
 use scene_ir::project::RenderSettings;
 use scene_ir::scene::Scene;
-use scene_ir::components::ShapeKind;
 use scene_ir::types::Color;
 
-use renderer_core::adapter::{CompileError, ExecuteError, HealthError, HealthStatus, RendererAdapter};
+use renderer_core::adapter::{
+    CompileError, ExecuteError, HealthError, HealthStatus, RendererAdapter,
+};
 use renderer_core::artifact::{ArtifactStatus, RenderArtifact};
 use renderer_core::plan::{RenderCommand, RenderPlan};
 
@@ -64,10 +66,12 @@ impl RendererAdapter for RemotionAdapter {
         let mut tsx_code = String::new();
         tsx_code.push_str("import { AbsoluteFill, registerRoot, Composition } from 'remotion';\n");
         tsx_code.push_str("import React from 'react';\n\n");
-        
+
         tsx_code.push_str("export const OpenAnimScene = () => {\n");
         tsx_code.push_str("    return (\n");
-        tsx_code.push_str("        <AbsoluteFill style={{ backgroundColor: 'black', overflow: 'hidden' }}>\n");
+        tsx_code.push_str(
+            "        <AbsoluteFill style={{ backgroundColor: 'black', overflow: 'hidden' }}>\n",
+        );
 
         let mut has_renderable = false;
 
@@ -101,7 +105,11 @@ impl RendererAdapter for RemotionAdapter {
                 NodeType::Shape => {
                     if let Some(shape) = &node.components.shape {
                         match &shape.kind {
-                            ShapeKind::Rectangle { width: w, height: h, corner_radius } => {
+                            ShapeKind::Rectangle {
+                                width: w,
+                                height: h,
+                                corner_radius,
+                            } => {
                                 tsx_code.push_str(&format!(
                                     "            <div style={{{{\n\
                                                      position: 'absolute',\n\
@@ -114,7 +122,15 @@ impl RendererAdapter for RemotionAdapter {
                                                      border: '{}px solid {}',\n\
                                                      opacity: {},\n\
                                                  }}}} />\n",
-                                    x, y, w, h, fill_color, corner_radius, stroke_width, stroke_color, opacity
+                                    x,
+                                    y,
+                                    w,
+                                    h,
+                                    fill_color,
+                                    corner_radius,
+                                    stroke_width,
+                                    stroke_color,
+                                    opacity
                                 ));
                             }
                             ShapeKind::Circle { radius: r } => {
@@ -130,13 +146,20 @@ impl RendererAdapter for RemotionAdapter {
                                                      border: '{}px solid {}',\n\
                                                      opacity: {},\n\
                                                  }}}} />\n",
-                                    x - r, y - r, r * 2.0, r * 2.0, fill_color, stroke_width, stroke_color, opacity
+                                    x - r,
+                                    y - r,
+                                    r * 2.0,
+                                    r * 2.0,
+                                    fill_color,
+                                    stroke_width,
+                                    stroke_color,
+                                    opacity
                                 ));
                             }
                             ShapeKind::Line { start, end } => {
                                 let dx = end.x - start.x;
                                 let dy = end.y - start.y;
-                                let length = (dx*dx + dy*dy).sqrt();
+                                let length = (dx * dx + dy * dy).sqrt();
                                 let angle = dy.atan2(dx).to_degrees();
                                 tsx_code.push_str(&format!(
                                     "            <div style={{{{\n\
@@ -150,7 +173,13 @@ impl RendererAdapter for RemotionAdapter {
                                                      transform: 'rotate({}deg)',\n\
                                                      opacity: {},\n\
                                                  }}}} />\n",
-                                    start.x, start.y, length, stroke_width, stroke_color, angle, opacity
+                                    start.x,
+                                    start.y,
+                                    length,
+                                    stroke_width,
+                                    stroke_color,
+                                    angle,
+                                    opacity
                                 ));
                             }
                             _ => {
@@ -181,7 +210,13 @@ impl RendererAdapter for RemotionAdapter {
                                              color: '{}',\n\
                                              opacity: {},\n\
                                          }}}}>{:?}</div>\n",
-                            x, y, text.font.family, text.font.size, fill_color, opacity, text.content
+                            x,
+                            y,
+                            text.font.family,
+                            text.font.size,
+                            fill_color,
+                            opacity,
+                            text.content
                         ));
                     }
                 }
@@ -203,7 +238,9 @@ impl RendererAdapter for RemotionAdapter {
         }
 
         if !has_renderable {
-            return Err(CompileError::InvalidScene("No renderable nodes found for Remotion".to_string()));
+            return Err(CompileError::InvalidScene(
+                "No renderable nodes found for Remotion".to_string(),
+            ));
         }
 
         tsx_code.push_str("        </AbsoluteFill>\n");
@@ -260,7 +297,9 @@ impl RendererAdapter for RemotionAdapter {
 
         for cmd in &plan.commands {
             match cmd {
-                RenderCommand::GenerateCode { code, output_path, .. } => {
+                RenderCommand::GenerateCode {
+                    code, output_path, ..
+                } => {
                     let path = Path::new(output_path);
                     if let Some(parent) = path.parent() {
                         std::fs::create_dir_all(parent).map_err(|e| {
@@ -271,7 +310,13 @@ impl RendererAdapter for RemotionAdapter {
                         ExecuteError::IoError(format!("Failed to write TSX file: {}", e))
                     })?;
                 }
-                RenderCommand::ExecuteProcess { command, args, env, timeout_secs, working_dir } => {
+                RenderCommand::ExecuteProcess {
+                    command,
+                    args,
+                    env,
+                    timeout_secs,
+                    working_dir,
+                } => {
                     let mut process = tokio::process::Command::new(command);
                     process.args(args);
                     if let Some(dir) = working_dir {
@@ -309,19 +354,31 @@ impl RendererAdapter for RemotionAdapter {
                         Ok(Err(e)) => {
                             // If npm/npx remotion is not installed, gracefully mock the output MP4
                             if command == "npx" && e.kind() == std::io::ErrorKind::NotFound {
-                                stdout.push_str("remotion mock execution: npx not found. Emitting mock MP4.");
+                                stdout.push_str(
+                                    "remotion mock execution: npx not found. Emitting mock MP4.",
+                                );
                                 if let Some(parent) = last_output_path.parent() {
                                     std::fs::create_dir_all(parent).unwrap_or(());
                                 }
-                                std::fs::write(&last_output_path, vec![0; 100]).map_err(|io_err| {
-                                    ExecuteError::IoError(format!("Failed to write mock MP4: {}", io_err))
-                                })?;
+                                std::fs::write(&last_output_path, vec![0; 100]).map_err(
+                                    |io_err| {
+                                        ExecuteError::IoError(format!(
+                                            "Failed to write mock MP4: {}",
+                                            io_err
+                                        ))
+                                    },
+                                )?;
                             } else {
-                                return Err(ExecuteError::Internal(format!("Failed to run process: {}", e)));
+                                return Err(ExecuteError::Internal(format!(
+                                    "Failed to run process: {}",
+                                    e
+                                )));
                             }
                         }
                         Err(_) => {
-                            return Err(ExecuteError::Timeout { timeout_secs: *timeout_secs });
+                            return Err(ExecuteError::Timeout {
+                                timeout_secs: *timeout_secs,
+                            });
                         }
                     }
                 }
@@ -371,8 +428,8 @@ impl RendererAdapter for RemotionAdapter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use scene_ir::node::Node;
     use scene_ir::components::{Shape, Style};
+    use scene_ir::node::Node;
 
     #[test]
     fn test_remotion_adapter_properties() {
@@ -417,4 +474,3 @@ mod tests {
         }
     }
 }
-

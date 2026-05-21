@@ -347,10 +347,7 @@ mod tests {
         let (mut graph, _, child_a_id, child_b_id) = build_test_graph();
         graph.reparent(child_b_id, child_a_id, None);
 
-        assert_eq!(
-            graph.get_node(child_b_id).unwrap().parent,
-            Some(child_a_id)
-        );
+        assert_eq!(graph.get_node(child_b_id).unwrap().parent, Some(child_a_id));
         assert!(graph.children(child_a_id).contains(&child_b_id));
     }
 

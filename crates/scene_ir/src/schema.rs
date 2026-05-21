@@ -46,13 +46,34 @@ pub fn all_schemas() -> std::collections::HashMap<String, Value> {
     schemas.insert("Node".to_string(), node_schema());
     schemas.insert("ComponentSet".to_string(), component_set_schema());
     schemas.insert("Timeline".to_string(), timeline_schema());
-    schemas.insert("NodeType".to_string(), serde_json::to_value(schema_for!(NodeType)).unwrap());
-    schemas.insert("ProjectMetadata".to_string(), serde_json::to_value(schema_for!(ProjectMetadata)).unwrap());
-    schemas.insert("RenderSettings".to_string(), serde_json::to_value(schema_for!(RenderSettings)).unwrap());
-    schemas.insert("AssetManifest".to_string(), serde_json::to_value(schema_for!(AssetManifest)).unwrap());
-    schemas.insert("SceneMetadata".to_string(), serde_json::to_value(schema_for!(SceneMetadata)).unwrap());
-    schemas.insert("KeyframeTrack".to_string(), serde_json::to_value(schema_for!(KeyframeTrack)).unwrap());
-    schemas.insert("AnimationEvent".to_string(), serde_json::to_value(schema_for!(AnimationEvent)).unwrap());
+    schemas.insert(
+        "NodeType".to_string(),
+        serde_json::to_value(schema_for!(NodeType)).unwrap(),
+    );
+    schemas.insert(
+        "ProjectMetadata".to_string(),
+        serde_json::to_value(schema_for!(ProjectMetadata)).unwrap(),
+    );
+    schemas.insert(
+        "RenderSettings".to_string(),
+        serde_json::to_value(schema_for!(RenderSettings)).unwrap(),
+    );
+    schemas.insert(
+        "AssetManifest".to_string(),
+        serde_json::to_value(schema_for!(AssetManifest)).unwrap(),
+    );
+    schemas.insert(
+        "SceneMetadata".to_string(),
+        serde_json::to_value(schema_for!(SceneMetadata)).unwrap(),
+    );
+    schemas.insert(
+        "KeyframeTrack".to_string(),
+        serde_json::to_value(schema_for!(KeyframeTrack)).unwrap(),
+    );
+    schemas.insert(
+        "AnimationEvent".to_string(),
+        serde_json::to_value(schema_for!(AnimationEvent)).unwrap(),
+    );
 
     schemas
 }
@@ -70,7 +91,12 @@ mod tests {
         let schema = project_schema();
         assert!(schema.is_object());
         let obj = schema.as_object().unwrap();
-        assert!(obj.contains_key("$schema") || obj.contains_key("title") || obj.contains_key("type") || obj.contains_key("properties"));
+        assert!(
+            obj.contains_key("$schema")
+                || obj.contains_key("title")
+                || obj.contains_key("type")
+                || obj.contains_key("properties")
+        );
     }
 
     #[test]

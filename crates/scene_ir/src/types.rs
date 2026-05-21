@@ -17,7 +17,9 @@ macro_rules! impl_uuid_json_schema {
             fn schema_name() -> String {
                 $name.to_string()
             }
-            fn json_schema(_gen: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
+            fn json_schema(
+                _gen: &mut schemars::r#gen::SchemaGenerator,
+            ) -> schemars::schema::Schema {
                 schemars::schema::SchemaObject {
                     instance_type: Some(schemars::schema::InstanceType::String.into()),
                     format: Some("uuid".to_string()),
