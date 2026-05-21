@@ -1,6 +1,0 @@
-{
-  "scripts": {
-    "generate": "uv run python app.py",
-    "manim:sync": "git clone --depth 1 --branch main --single-branch https://github.com/ManimCommunity/manim.git manim || git -C manim pull --ff-only origin main"
-  }
-}

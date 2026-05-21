@@ -1,0 +1,15 @@
+[package]
+name = "hasher"
+description = "Deterministic content-hashing for Bazel-style artifact caching"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+scene_ir = { workspace = true }
+blake3 = "1.5"
+serde = { workspace = true }
+serde_json = { workspace = true }
