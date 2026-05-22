@@ -1,19 +1,15 @@
-# Rust
-/target/
-**/*.rs.bk
-Cargo.lock
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-dist/
+# C++
 build/
-.eggs/
-*.egg
-.venv/
-venv/
+*.o
+*.a
+*.out
+*.so
+*.dylib
+*.dll
+*.pdb
+compile_commands.json
+CMakeCache.txt
+CMakeFiles/
 
 # IDE
 .vscode/
@@ -26,8 +22,16 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Build artifacts
-*.so
-*.dylib
-*.dll
-*.pdb
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+.eggs/
+*.egg
+.venv/
+venv/
+
+# OpenAnim
+.openanim/cache/

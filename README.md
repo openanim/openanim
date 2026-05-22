@@ -22,7 +22,34 @@ Natural Language → Scene IR → Scene Graph → Renderer Adapters → Artifact
 | **OpenHands** | Autonomous repair loops, execution feedback |
 | **ComfyUI** | Local-first composable execution graphs, plugin ecosystems |
 
-## Crate Structure
+## C++ Prototype
+
+OpenAnim is now being ported to modern C++ while the original Rust crates remain
+in the repository as reference material during the prototype phase.
+
+```bash
+# Configure and build the C++ engine
+cmake -S . -B build
+cmake --build build
+
+# Run the C++ smoke tests
+ctest --test-dir build --output-on-failure
+
+# Render the sample project through the native C++ studio entrypoint
+./build/openanim-studio project.json
+```
+
+The C++ implementation lives under `cpp/`:
+
+```
+cpp/
+├── include/openanim/  # Public engine headers
+├── src/               # Engine implementation
+├── apps/              # openanim-studio
+└── tests/             # Smoke tests
+```
+
+## Original Rust Crate Structure
 
 ```
 openanim/
@@ -39,7 +66,7 @@ openanim/
 └── Papers/              # Research references, not needed in runtime images
 ```
 
-## Quick Start
+## Rust Reference Quick Start
 
 ```bash
 # Build the engine
