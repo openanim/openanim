@@ -4,7 +4,9 @@
     "name": "E2E Test Project",
     "description": "End-to-end verification project for OpenAnim Engine",
     "version": "0.1.0",
-    "authors": ["Antigravity Developer"],
+    "authors": [
+      "Antigravity Developer"
+    ],
     "created_at": "2026-05-21T20:00:00Z"
   },
   "scenes": [
@@ -17,8 +19,9 @@
           "id": "3cbfef20-41bf-4b9e-bd42-83b65ef39b23",
           "name": "root",
           "node_type": "group",
-          "parent": null,
-          "children": ["7c2a71bf-d7e1-4560-843f-7e23bb41ff5c"],
+          "children": [
+            "7c2a71bf-d7e1-4560-843f-7e23bb41ff5c"
+          ],
           "components": {}
         },
         {
@@ -26,12 +29,20 @@
           "name": "ShapeNode",
           "node_type": "shape",
           "parent": "3cbfef20-41bf-4b9e-bd42-83b65ef39b23",
-          "children": [],
           "components": {
-            "shape": {
-              "kind": {
-                "type": "circle",
-                "radius": 50.0
+            "transform": {
+              "position": {
+                "x": 960.0,
+                "y": 540.0
+              },
+              "rotation": 0.0,
+              "scale": {
+                "x": 1.0,
+                "y": 1.0
+              },
+              "anchor": {
+                "x": 0.5,
+                "y": 0.5
               }
             },
             "style": {
@@ -56,16 +67,11 @@
               "z_index": 1,
               "visible": true
             },
-            "transform": {
-              "position": {
-                "x": 960.0,
-                "y": 540.0
-              },
-              "scale": {
-                "x": 1.0,
-                "y": 1.0
-              },
-              "rotation": 0.0
+            "shape": {
+              "kind": {
+                "type": "circle",
+                "radius": 50.0
+              }
             }
           }
         }
@@ -95,18 +101,171 @@
               }
             ]
           }
-        ],
-        "events": []
+        ]
       },
       "duration": 5.0,
       "metadata": {}
+    },
+    {
+      "id": "b1c2d3e4-f5a6-7890-1234-56789abcdef0",
+      "name": "Sine Wave Animation",
+      "root_node": "a1b2c3d4-e5f6-7890-1234-56789abcdef0",
+      "nodes": [
+        {
+          "id": "a1b2c3d4-e5f6-7890-1234-56789abcdef0",
+          "name": "root",
+          "node_type": "group",
+          "children": [
+            "b2c3d4e5-f6a7-8901-2345-67890abcdef0"
+          ],
+          "components": {}
+        },
+        {
+          "id": "b2c3d4e5-f6a7-8901-2345-67890abcdef0",
+          "name": "SineWave",
+          "node_type": "shape",
+          "parent": "a1b2c3d4-e5f6-7890-1234-56789abcdef0",
+          "components": {
+            "transform": {
+              "position": {
+                "x": 0.0,
+                "y": 0.0
+              },
+              "rotation": 0.0,
+              "scale": {
+                "x": 1.0,
+                "y": 1.0
+              },
+              "anchor": {
+                "x": 0.0,
+                "y": 0.5
+              }
+            },
+            "style": {
+              "stroke": {
+                "color": {
+                  "r": 0.0,
+                  "g": 0.5,
+                  "b": 1.0,
+                  "a": 1.0
+                },
+                "width": 3.0,
+                "line_cap": "round",
+                "line_join": "round"
+              },
+              "opacity": 1.0,
+              "z_index": 0,
+              "visible": true
+            },
+            "shape": {
+              "kind": {
+                "type": "line",
+                "start": {
+                  "x": 0.0,
+                  "y": 0.0
+                },
+                "end": {
+                  "x": 800.0,
+                  "y": 0.0
+                }
+              }
+            }
+          }
+        }
+      ],
+      "timeline": {
+        "duration": 4.0,
+        "tracks": [
+          {
+            "target_node": "b2c3d4e5-f6a7-8901-2345-67890abcdef0",
+            "property": "position",
+            "keyframes": [
+              {
+                "time": 0.0,
+                "value": {
+                  "type": "scalar",
+                  "value": 0.0
+                },
+                "easing": "linear"
+              },
+              {
+                "time": 0.5,
+                "value": {
+                  "type": "scalar",
+                  "value": 100.0
+                },
+                "easing": "ease_in_out"
+              },
+              {
+                "time": 1.0,
+                "value": {
+                  "type": "scalar",
+                  "value": 0.0
+                },
+                "easing": "ease_in_out"
+              },
+              {
+                "time": 1.5,
+                "value": {
+                  "type": "scalar",
+                  "value": -100.0
+                },
+                "easing": "ease_in_out"
+              },
+              {
+                "time": 2.0,
+                "value": {
+                  "type": "scalar",
+                  "value": 0.0
+                },
+                "easing": "ease_in_out"
+              },
+              {
+                "time": 2.5,
+                "value": {
+                  "type": "scalar",
+                  "value": 100.0
+                },
+                "easing": "ease_in_out"
+              },
+              {
+                "time": 3.0,
+                "value": {
+                  "type": "scalar",
+                  "value": 0.0
+                },
+                "easing": "ease_in_out"
+              },
+              {
+                "time": 3.5,
+                "value": {
+                  "type": "scalar",
+                  "value": -100.0
+                },
+                "easing": "ease_in_out"
+              },
+              {
+                "time": 4.0,
+                "value": {
+                  "type": "scalar",
+                  "value": 0.0
+                },
+                "easing": "ease_in_out"
+              }
+            ]
+          }
+        ]
+      },
+      "duration": 4.0,
+      "metadata": {}
     }
   ],
-  "assets": {
-    "assets": []
-  },
+  "assets": {},
   "settings": {
-    "resolution": [1920, 1080],
+    "resolution": [
+      1920,
+      1080
+    ],
     "fps": 60.0,
     "format": "mp4",
     "background_color": {
