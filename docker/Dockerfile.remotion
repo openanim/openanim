@@ -1,0 +1,14 @@
+FROM node:20-slim
+
+# Chromium is required by Remotion for headless rendering
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    fonts-liberation \
+    libxss1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Tell Remotion / Puppeteer where Chromium lives
+ENV REMOTION_CHROME_EXECUTABLE=/usr/bin/chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
+WORKDIR /workspace

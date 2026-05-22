@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+# System dependencies for Manim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libgdk-pixbuf2.0-dev \
+    texlive-latex-base \
+    texlive-fonts-recommended \
+    texlive-latex-extra \
+    dvipng \
+    dvisvgm \
+    && pip install --no-cache-dir manim \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace

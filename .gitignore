@@ -1,37 +1,26 @@
-# C++
+# Build
 build/
 *.o
 *.a
-*.out
-*.so
-*.dylib
-*.dll
-*.pdb
-compile_commands.json
+
+# CMake
 CMakeCache.txt
 CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# OpenAnim runtime artifacts
+.openanim/cache/
+.openanim/remotion-workspace/
+
+# Remotion workspace (semi-persistent, not committed)
+/tmp/openanim-remotion-workspace/
+
+# OS
+.DS_Store
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-dist/
-.eggs/
-*.egg
-.venv/
-venv/
-
-# OpenAnim
-.openanim/cache/
