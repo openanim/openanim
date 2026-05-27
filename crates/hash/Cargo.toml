@@ -1,0 +1,12 @@
+[package]
+name = "hash"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+blake3 = "1"
+hex = "0.4"

@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/ir",
+  "crates/graph",
+  "crates/diff",
+  "crates/hash",
+  "crates/cache",
+  "crates/provider",
+  "crates/sandbox",
+  "crates/engine",
+  "crates/openanim",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+

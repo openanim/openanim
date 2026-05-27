@@ -1,3 +1,0 @@
-FROM linuxserver/ffmpeg:latest
-
-WORKDIR /workspace

@@ -1,26 +1,3 @@
-# Build
-build/
-*.o
-*.a
-
-# CMake
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-Makefile
-
-# OpenAnim runtime artifacts
-.openanim/cache/
-.openanim/remotion-workspace/
-
-# Remotion workspace (semi-persistent, not committed)
-/tmp/openanim-remotion-workspace/
-
-# OS
+/target
+**/*.rs.bk
 .DS_Store
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo

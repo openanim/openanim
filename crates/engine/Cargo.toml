@@ -1,0 +1,20 @@
+[package]
+name = "engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+ir = { path = "../ir" }
+graph = { path = "../graph" }
+diff = { path = "../diff" }
+hash = { path = "../hash" }
+cache = { path = "../cache" }
+provider = { path = "../provider" }
+sandbox = { path = "../sandbox" }
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
